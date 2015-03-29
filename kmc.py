@@ -9,7 +9,8 @@ try:
 	import kivy
 except ImportError:
 	print "Kivy not found!"
-	subprocess.Popen(["./install_debian.sh"])
+	installscript = subprocess.Popen(["./install_debian.sh"])
+	installscript.wait()
 
 from kivy.config import Config
 
