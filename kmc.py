@@ -1,6 +1,16 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 
+import module_locator
+import subprocess
+import os
+
+try:
+	import kivy
+except ImportError:
+	print "Kivy not found!"
+	subprocess.Popen(["./install_debian.sh"])
+
 from kivy.config import Config
 
 #Config.set('graphics', 'width', 1000)
@@ -45,8 +55,6 @@ from kivy.graphics.texture import Texture
 #Clock.max_iteration = 50
 
 import pickle
-import os
-import subprocess
 #import dogtail.rawinput
 import re
 import operator
@@ -73,8 +81,6 @@ from collections import OrderedDict, Counter
 from urllib2 import urlopen
 from tkFileDialog import askopenfilename
 #import fcntl
-
-import module_locator
 
 try:
 	from send2trash import send2trash
