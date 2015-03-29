@@ -1156,8 +1156,8 @@ class KMCApp(App):
 
 #		save.setname(save.tvfolder, ["TV", None])
 		
-		self.baseimagepath = os.path.join("/home/yyon/Pictures/wallpapers", random.choice(os.listdir("/home/yyon/Pictures/wallpapers")))
-		
+#		self.baseimagepath = os.path.join("/home/yyon/Pictures/wallpapers", random.choice(os.listdir("/home/yyon/Pictures/wallpapers")))
+#		
 		self.sm = ScreenManager()
 		self.defaultscreen = Screen(name="default")
 		self.sm.add_widget(self.defaultscreen)
@@ -1484,7 +1484,7 @@ class KMCApp(App):
 			else:
 				text = "There are no files in\n"
 			text += self.infolder+"\nTry adding some!"
-			b = abutton(os.path.join(self.up, "NOTAFILE"), self, text)
+			b = abutton(os.path.join(self.infolder, "NOTAFILE"), self, text)
 			self.buttons.append(b)
 		
 #		self.updatedownloaded()
