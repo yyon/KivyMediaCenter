@@ -83,10 +83,10 @@ from urllib2 import urlopen
 from tkFileDialog import askopenfilename
 #import fcntl
 
-try:
-	from send2trash import send2trash
-except ImportError:
-	send2trash = None
+#try:
+#	from send2trash import send2trash
+#except ImportError:
+#	send2trash = None
 
 #TODO
 # make it work on other computers
@@ -108,7 +108,7 @@ root = Tkinter.Tk()
 root.withdraw()
 
 buttoncolor=(0,0,0,0)
-selectedcolor=(0.3,0.3,1,0.3)
+selectedcolor=(1,0,0.4,0.3)
 errorcolor=(1,0,0,0.4)
 textcolor=(0,0,0,1)#(1,1,1,1)
 BACKOPACITY = 0.2
@@ -118,9 +118,14 @@ backgroundinvisible=(1,1,1,0)
 SORT_ALPHABETICAL = "Alpha"
 SORT_WATCHED = "Watched"
 SORT_CREATED = "Created"
-SORTING = [SORT_ALPHABETICAL, SORT_WATCHED, SORT_CREATED]
+SORT_SIZE = "Size"
+SORTING = [SORT_ALPHABETICAL, SORT_WATCHED, SORT_CREATED, SORT_SIZE]
 
 useoutlines = False
+showupdown = False
+
+usempv = True
+usebumblebee = False
 
 class dictwithdefault(UserDict):
 	def __init__(self, default=None):
@@ -156,8 +161,7 @@ def getcreatedtime(f):
 
 class savedata(object):
 	def makevars(self):
-		v = {"infolder":tvfolder,
-			"showwatched":True,
+		v = {"showwatched":True,
 			"watched":dictwithdefault(),
 			"names":dictwithdefault(),
 			"images":dictwithdefault(),
@@ -165,7 +169,8 @@ class savedata(object):
 			"lastwatched":dictwithdefault(),
 			"sort":SORT_ALPHABETICAL,
 			"watchedset":set(),
-			"created":dictwithdefault()}
+			"created":dictwithdefault(),
+			"allshows":allshowsclass()}
 
 		for var in v:
 			value = v[var]
@@ -282,7 +287,7 @@ class saveclass():
 
 	def load(self, loc, defaultdata):
 		if os.path.exists(loc):
-			f = open(loc)
+			f = open(loc, "rb")
 			data = pickle.load(f)
 		else:
 			f = open(loc, "w")
@@ -368,6 +373,8 @@ class saveclass():
 	"""
 
 	def save(self, data, loc):
+		shutil.copyfile(loc, loc+".bak") # make backup
+		
 		f = open(loc, "w")
 		pickle.dump(data, f)
 		f.close()
@@ -408,28 +415,29 @@ def getnumbers(string):
 				num = ""
 	return nums
 
-def namedir(folder, override=False):
+def namedir(l, override=False):
 	print "naming dir"
 
 	global torrenteps
 	torrenteps = []
 
-	l = os.listdir(folder)
-	l = [os.path.join(folder, path) for path in l]
-	l.sort()
-
-	files = [os.path.basename(f).replace(",", ".") for f in l]
-	for f in files:
-		print f
+#	l = os.listdir(folder)
+#	l = [os.path.join(folder, path) for path in l]
+#	l.sort()
+	
+	files = l
+#	files = [f.getpathname().replace(",", ".") for f in l]
+#	for f in files:
+#		print f
 	print "###"
 #	filenumpos = [[] for f in files]
 
 	filenums = {}
 
 	for f in files:
-		filenums[f] = getnumbers(f)
+		filenums[f] = getnumbers(stripname(f.getpathname(), False))
 		print f, filenums[f]
-
+	
 	allfilenums = [fnum for f in files for fnum in filenums[f]]
 	print allfilenums
 	filenumcounter={}
@@ -480,7 +488,7 @@ def namedir(folder, override=False):
 #								toremove.append(strindex)
 	for f in files:
 		filenums[f] = [fnum for fnum in filenums[f] if not fnum.strindex in toremove]
-		print f, filenums[f]
+#		print f, filenums[f]
 
 	filenumsstrindex = [fnum.strindex for f in files for fnum in filenums[f]]
 	epnumpos = None
@@ -568,25 +576,22 @@ def namedir(folder, override=False):
 #		epnumpos = epnums[0]
 #	else:
 #		epnumpos = None
-
+	
 	for index, name in enumerate(names):
 		path = l[index]
 		changedname = files[index]
-		newname = os.path.basename(path)
-		if os.path.isdir(path):
-			newname = changename(newname, takeoutnumbers=True, dosearch=dogooglesearch, title=True)
-		else:
-			if epnumpos != None:
-				numpos = epnumpos#[0]
+		newname = path.getpathname()#stripname(path.getpathname(), False)#os.path.basename(path)
+		if epnumpos != None:
+			numpos = epnumpos#[0]
 #				numbers = getnumbers(changedname)#changedname[epnumpos[0]:epnumpos[0]+2]#+epnumpos[1]]
-				numbers = filenums[changedname]
-				number = [num for num in numbers if num.strindex == numpos]
-				if number != []:
-					number = number[0].num
-					if "." in number:
-						number = float(number)
-					else:
-						number = int(number)
+			numbers = filenums[changedname]
+			number = [num for num in numbers if num.strindex == numpos]
+			if number != []:
+				number = number[0].num
+				if "." in number:
+					number = float(number)
+				else:
+					number = int(number)
 #				number = number.strip()
 #				number = filter(lambda x : x.isdigit(), number)
 #				if number.isdigit() and number != "":
@@ -594,19 +599,19 @@ def namedir(folder, override=False):
 #					afternumber = changedname[epnumpos[0]:epnumpos[0]+4]
 #					if afternumber.endswith(".5"):
 #						number = number + .5
-					eps[index] = number#newname = "Episode " + number + " " + newname
+				eps[index] = number#newname = "Episode " + number + " " + newname
 		names[index] = newname
 
 	numbereps = sum([ep != None for ep in eps])
-	if numbereps <= 2:
+	if numbereps <= 1:
 		eps = [None for ep in eps]
 
 	for index, path in enumerate(l):
-		if not path in save.names or override:
-			name = names[index]
-			epnumber = eps[index]
-			save.names[path] = [name, epnumber]
-
+		if not path.getkey() in save.names or override:
+			if isinstance(path, episode):
+				name = names[index]
+				epnumber = eps[index]
+				path.setname([name, epnumber])
 
 homefolder = os.path.expanduser("~")#os.environ['HOME']
 tvfolder = os.path.join(homefolder, "Videos/tv")
@@ -614,19 +619,17 @@ kmcfolder = os.path.join(homefolder, ".kmc")
 imagesfolder = os.path.join(kmcfolder, "images")
 savefile = os.path.join(kmcfolder, "save")
 deletedfile = os.path.join(homefolder, "Videos/deleted")
+startupscript = os.path.join(kmcfolder, "startup.sh")
 
 defaultimageloc = os.path.join(kmcfolder, "default.jpg")
 if not os.path.exists(defaultimageloc):
 	defaultimageloc = os.path.join(module_locator.module_path(), "default.jpg")
 
-saveclassinst = saveclass()
-save = saveclassinst.savestatevar
-
 checkmark = u"\u2713"
 
 dogooglesearch = False
 whitespaces = ["_"]
-removestuff = ["DVD", "Ep", "Episodes", "+ OVA", "OVA"]
+removestuff = ["DVD", "Ep", "Episodes", "+ OVA", "OVA", ".!qB", ".part"]
 removestuffregex = ["[\[\(][^\]^\)]*[\]\)]", "v[0-9]"]
 numberregex = "[0-9]+\s*[0-9]+"
 ignorefiles = ["/"]
@@ -682,7 +685,7 @@ def imagesearch(searchTerm, page):
 	return images
 
 def findimage(loc, page=0):
-	searchterm = save.names[loc][0] + " wallpaper"
+	searchterm = loc.getname()[0] + " wallpaper"#save.names[loc][0] + " wallpaper"
 	images = imagesearch(searchterm, page)
 	return images
 
@@ -910,14 +913,14 @@ class AFLabel(Label):
 		# start with simple case of calculating scalefactor from height
 		self.font_size = '%dsp' % sp(height)
 
-buttonactivatedtexture = Gradient.horizontal(selectedcolor, (0, 0, 1, 0))
+buttonactivatedtexture = Gradient.horizontal(selectedcolor, selectedcolor[:3] + (0,))
 buttoninvisibletexture = Gradient.horizontal((0,0,0,0), (0, 0, 0, 0))
-buttonnormaltexture = Gradient.horizontal(buttoncolor, (0, 0, 0, 0))
-buttonerrortexture = Gradient.horizontal(errorcolor, (0, 0, 0, 0))
-rightbuttonnormaltexture = Gradient.horizontal((0,0,0,0), buttoncolor)
+buttonnormaltexture = Gradient.horizontal(buttoncolor, buttoncolor[:3] + (0,))
+buttonerrortexture = Gradient.horizontal(errorcolor, errorcolor[:3] + (0,))
+rightbuttonnormaltexture = Gradient.horizontal(buttoncolor[:3] + (0,), buttoncolor)
 
 class abutton(AnchorLayout):
-	def __init__(self, path, app, name=None):
+	def __init__(self, ep, app, name=None):
 		AnchorLayout.__init__(self)#, size_hint=(.9, None), height='60dp')
 
 		with self.canvas.before:
@@ -927,18 +930,21 @@ class abutton(AnchorLayout):
 #		self.button = Button(size_hint=(1,1), background_color=(0,0,0,0))
 #		self.add_widget(self.button)
 
-		self.path = path
+		self.ep = ep
 		self.app = app
 		self.watched = False
 
-		self.showfolder = self.path
+		self.showfolder = ep.getparent()
 		while True:
-			if os.path.samefile(os.path.normpath(os.path.join(self.showfolder, "..")), tvfolder):
+			if isinstance(self.showfolder, show) or self.showfolder == save.allshows:#self.showfolder.up == save.allshows:#os.path.samefile(os.path.normpath(os.path.join(self.showfolder, "..")), tvfolder):
 				break
-			self.showfolder = os.path.normpath(os.path.join(self.showfolder, ".."))
+			self.showfolder = self.showfolder.getparent()#os.path.normpath(os.path.join(self.showfolder, ".."))
 
 		if name == None:
-			name = os.path.basename(self.path)
+			name = ep.getname()[0]
+			if name == None:
+				name = ep.getpathname()
+#			name = os.path.basename(self.path)
 		self.name = name
 
 		self.font_size='40sp'
@@ -994,9 +1000,6 @@ class abutton(AnchorLayout):
 		self.bind(size=self.redraw)
 
 		self.bind(on_press=self.pressed)
-		
-
-
 
 	def redraw(self, *args):
 		self.rect.pos = self.pos
@@ -1020,16 +1023,16 @@ class abutton(AnchorLayout):
 		if namedisplay == "name":
 			self.label.text = self.name
 		elif namedisplay == "file":
-			self.label.text = os.path.basename(self.path)
+			self.label.text = self.ep.getpathname()#os.path.basename(self.path)
 
 	def pressed(self, *args):
-		if os.path.isdir(self.path):
-			self.app.enterfolder(self.path)
-		else:
+		if isinstance(self.ep, episode):#os.path.isdir(self.path):
 #			dogtail.rawinput.click(0,0)
-			save.watched[self.path] = True
+			self.ep.setwatched(True)
+			#save.watched[self.path] = True
 			self.check()
-			save.lastwatched[self.showfolder] = time.gmtime()
+			self.showfolder.setlastwatched(time.gmtime())
+			#save.lastwatched[self.showfolder] = time.gmtime()
 			self.app.select_down()
 #			optirunflag = ""
 #			if optirun:
@@ -1037,9 +1040,21 @@ class abutton(AnchorLayout):
 #			if vlc:
 #				subprocess.Popen(optirunflag + "vlc --fullscreen \"" + self.path + "\"", shell=True)#"vlc \"" + self.path + "\" --play-and-exit --video-on-top --fullscreen", shell=True)
 #			else:
-			path = self.path
+			path = self.ep.path
 #			path = path.replace("`", "\\`")
-			subprocess.Popen(["smplayer", "-fullscreen", "-close-at-end", path])#, shell=True)#"vlc \"" + self.path + "\" --play-and-exit --video-on-top --fullscreen", shell=True)
+			if usempv:
+				new_env = os.environ.copy()
+				new_env["VDPAU_DRIVER"] = "va_gl"
+				new_env["DRI_PRIME"] = "1"
+				command = ["mpv", path, "--fullscreen", "--display-fps=60"]
+				if usebumblebee:
+					command = ["primusrun"] + command + ["--vo=opengl-hq:scale=ewa_lanczossharp"]
+				subprocess.Popen(command, env=new_env)
+			else:
+				subprocess.Popen(["smplayer", "-fullscreen", "-close-at-end", path])#, shell=True)#"vlc \"" + self.path + "\" --play-and-exit --video-on-top --fullscreen", shell=True)
+		else:
+			self.app.enterfolder(self.ep)
+
 
 	def redrawsize(self, *args):
 		pass
@@ -1057,7 +1072,7 @@ class abutton(AnchorLayout):
 #		print "hover"
 
 	def updatechecked(self):
-		if save.watched[self.path]:
+		if self.ep.getwatched():#save.watched[self.path]:
 			self.check()
 		else:
 			self.uncheck()
@@ -1067,7 +1082,8 @@ class abutton(AnchorLayout):
 			self.uncheck()
 		else:
 			self.check()
-		save.watched[self.path] = self.watched
+		self.ep.setwatched(self.watched)
+		#save.watched[self.path] = self.watched
 
 	def check(self):
 		self.watched = True
@@ -1100,7 +1116,7 @@ class abutton(AnchorLayout):
 			has_error=True
 		if self.missingprevepisode:
 			has_error=True
-		if self.path.endswith(".part") or self.path.endswith(".!qB"):
+		if self.ep.getpathname().endswith(".part") or self.ep.getpathname().endswith(".!qB"):
 			has_error=True
 
 #		color = selectedcolor
@@ -1170,6 +1186,322 @@ class clock(AnchorLayout):
 	def update(self, *args):
 		self.button.text = time.strftime("%I:%M %p")
 
+
+class pathobj(object):
+	def __init__(self):
+		pass
+	
+	def getkey(self):
+		return self
+	
+	def getparent(self):
+		return None
+	
+	def getchildren(self):
+		return None
+	
+	def exists(self):
+		return False
+	
+	def getname(self):
+		if not self.getkey() in save.names.keys():
+			save.names[self.getkey()] = self.defaultname()
+		return save.names[self.getkey()]
+		
+	def defaultname(self):
+		return None #override
+		
+	def setname(self, name):
+		save.names[self.getkey()] = name
+		
+	def getwatched(self):
+		if not self.getkey() in save.watched.keys():
+			save.watched[self.getkey()] = self.defaultwatched()
+		return save.watched[self.getkey()]
+		
+	def defaultwatched(self):
+		return False
+		
+	def setwatched(self, watched):
+		save.watched[self.getkey()] = watched
+		
+	def getcreated(self):
+		if not self.getkey() in save.created.keys():
+			save.created[self.getkey()] = self.defaultcreated()
+		return save.created[self.getkey()]
+		
+	def defaultcreated(self):
+		return time.time() # override
+		
+	def setcreated(self, created):
+		save.created[self.getkey()] = created
+		
+	def getimage(self):
+		if not self.getkey() in save.images.keys():
+			return self.defaultimage()
+		return save.images[self.getkey()]
+		
+	def defaultimage(self):
+		return defaultimageloc
+		
+	def setimage(self, image):
+		save.images[self.getkey()] = image
+		
+	def getscrollstate(self):
+		if not self.getkey() in save.scrollstate.keys():
+			return self.defaultscrollstate()
+		return save.scrollstate[self.getkey()]
+		
+	def defaultscrollstate(self):
+		return [0,0,None]
+		
+	def setscrollstate(self, scrollstate):
+		save.scrollstate[self.getkey()] = scrollstate
+		
+	def getlastwatched(self):
+		if not self.getkey() in save.lastwatched.keys():
+			return self.defaultlastwatched()
+		return save.lastwatched[self.getkey()]
+		
+	def defaultlastwatched(self):
+		return time.gmtime(0)
+	
+	def setlastwatched(self, lastwatched):
+		save.lastwatched[self.getkey()] = lastwatched
+		
+	def getpathname(self):
+		return None # overwrite
+		
+	def getsize(self):
+		size = 0
+		for child in self.getchildren():
+			size += child.getsize()
+		return size
+
+class allshowsclass(pathobj):
+	def __init__(self):
+		self.shows = []
+	
+	def getchildren(self):
+		allstrshoweps = []
+		for show in self.shows:
+			if isinstance(show, strshow):
+				allstrshoweps += show.getchildren()
+		
+		# check for new shows
+		for pathname in os.listdir(tvfolder):
+			path = os.path.join(tvfolder, pathname)
+			if os.path.isdir(path):
+				foundpath = False
+				for show in self.shows:
+					if isinstance(show, foldershow):
+						if os.path.normpath(show.path) == os.path.normpath(path):
+							foundpath = True
+							break
+				if not foundpath:
+					self.shows.append(foldershow(path))
+			else:
+				foundpath = False
+				for ep in allstrshoweps:
+					if os.path.normpath(ep.path) == os.path.normpath(path):
+						foundpath = True
+						break
+				if not foundpath:
+					newshow = newstrshowfromep(path)
+					print newshow.showstr
+					self.shows.append(newshow)
+					allstrshoweps += newshow.getchildren()
+		
+		# check for deleted shows
+		showstoremove = []
+		for show in self.shows:
+			if not show.exists():
+				showstoremove.append(show)
+		for show in showstoremove:
+			self.shows.remove(show)
+		
+		return self.shows
+	
+	def getname(self):
+		return ["TV Shows", None]
+
+class show(pathobj):
+	def __init__(self):
+		pathobj.__init__(self)
+	
+	def getparent(self):
+		return save.allshows
+	
+	def delete(self):
+		with open(deletedfile, "a") as myfile:
+			myfile.write(self.getname()[0] + "\n")
+			
+		for child in self.getchildren():
+			child.delete()
+
+class foldershow(show):
+	def __init__(self, path):
+		show.__init__(self)
+		self.path = path
+	
+	def getkey(self):
+		return self.path
+		
+	def getchildren(self):
+		children = []
+		for pathname in os.listdir(self.path):
+			path = os.path.join(self.path, pathname)
+			if os.path.isdir(path):
+				children.append(folder(path, self))
+			else:
+				children.append(episode(path, self))
+		return children
+	
+	def exists(self):
+		return os.path.exists(self.path)
+	
+	def getpathname(self):
+		return os.path.basename(self.path)
+
+	def defaultname(self):
+		return [changename(self.getpathname(), takeoutnumbers=True, dosearch=dogooglesearch, title=True), None]
+		
+	def defaultcreated(self):
+		return getcreatedtime(self.path)
+		
+	def delete(self):
+		show.delete(self)
+		os.rmdir(self.path)
+
+def stripname(name, stripnums = True):
+	for pattern in removestuffregex:
+		name = re.sub(pattern, "", name)
+	if stripnums:
+		name = re.sub(numberregex, "", name)
+	for pattern in removestuff:
+		name = name.replace(pattern, "")
+	return name
+
+class strshow(show):
+	def __init__(self, showstr):
+		show.__init__(self)
+		self.showstr = showstr
+	
+	def getchildren(self):
+		children = []
+		for pathname in os.listdir(tvfolder):
+			path = os.path.join(tvfolder, pathname)
+			showstr = stripname(self.showstr)
+			if not os.path.isdir(path):
+				if stripname(pathname) == showstr:
+					children.append(episode(path, self))
+		return children
+		
+	def defaultname(self):
+		return [changename(self.getpathname(), takeoutnumbers=True, dosearch=dogooglesearch, title=True), None]
+	
+	def exists(self):
+		if self.getchildren() == []:
+			return False
+		else:
+			return True
+	
+	def getpathname(self):
+		name = self.showstr
+		if "." in name:
+			name = name.rsplit(".", 1)[0]
+		return name
+
+def newstrshowfromep(ep_path):
+	epname = os.path.basename(ep_path)
+	return strshow(stripname(epname))
+	"""
+	# find episode number position in string
+	epname = os.path.basename(ep_path)
+	opens = "[<({"
+	closes = "]>)}"
+	inparen = False
+	foundnum = False
+	firstnumpos = None
+	epnumpos = None
+	for pos in range(len(epname-1), -1, -1):
+		char = epname[pos]
+		if char in closes:
+			inparen = True
+		elif char in closes:
+			inparen = False
+		elif char.isdigit:
+			if not inparen:
+				if firstnumpos == None:
+					firstnumpos = pos
+				foundnum = True
+		else:
+			if foundnum:
+				epnumpos = pos + 1
+	if epnumpos == None:
+		return strshow(epname)
+	else:
+		showstr = epname[:epnumpos] + "%EPNUM%" + epname[firstnumpos+1:]
+		return strshow(showstr)
+	"""
+
+class filesyspath(pathobj):
+	def __init__(self, path, up):
+		pathobj.__init__(self)
+		self.path = path
+		self.up = up
+	
+	def getkey(self):
+		return self.path
+	
+	def getparent(self):
+		return self.up
+		
+	def exists(self):
+		return os.path.exists(self.path)
+		
+	def getpathname(self):
+		return os.path.basename(self.path)
+	
+	def defaultcreated(self):
+		return getcreatedtime(self.path)
+		
+	def defaultname(self):
+		namedir(self.up.getchildren())
+		return save.names[self.getkey()]
+
+class episode(filesyspath):
+	def __init__(self, path, up):
+		filesyspath.__init__(self, path, up)
+	
+	def getsize(self):
+		return os.path.getsize(self.path)
+		
+	def delete(self):
+		print "DELETING:", self.path
+		os.remove(self.path)
+
+class folder(filesyspath):
+	def __init__(self, path, up):
+		filesyspath.__init__(self, path, up)
+	
+	def getchildren(self):
+		children = []
+		for pathname in os.listdir(self.path):
+			path = os.path.join(self.path, pathname)
+			if os.path.isdir(path):
+				children.append(folder(path, self))
+			else:
+				children.append(episode(path, self))
+		return children
+	
+	def defaultname(self):
+		return [changename(self.getpathname(), takeoutnumbers=False, dosearch=False, title=True), None]
+		
+	def delete(self):
+		for child in self.getchildren():
+			child.delete()
+		os.rmdir(self.path)
 
 class KMCApp(App):
 	def build(self):
@@ -1276,7 +1608,7 @@ class KMCApp(App):
 #		fllayout.add_widget(self.previewimage)
 
 		self.buttons = []
-		self.up = None
+#		self.up = None
 		self.namedisplay = "name"
 
 		self.infolder = None
@@ -1293,25 +1625,36 @@ class KMCApp(App):
 		self._keyboard.bind(on_key_down=self._on_keyboard_down)
 
 		#self.populatebuttons(["a", "b", "c"])
-		self.enterfolder(tvfolder)
+		self.enterfolder(save.allshows)
 
 		Clock.schedule_interval(self.lookfordownloadupdate, 60)
 #		Clock.schedule_once(self.on_start, 1)
 #		Clock.schedule_interval(self.refresh, 30)
 
-		options = [["Play", self.dobutton], ["Up", self.esc], ["Refresh", self.refresh], ["Delete", self.delete], ["Folder Rename", self.folderrename], ["Rename", self.rename],
+		optionlayout = BoxLayout(orientation="vertical", pos_hint={'center_x':.5, 'center_y':.35}, size_hint=[1,.7], spacing=self.buttonspacing)
+		sidebarlayout.add_widget(optionlayout)
+		
+		if showupdown:
+			updown = BoxLayout(orientation="horizontal", pos_hint={'center_x':.85, 'center_y':.5}, size_hint=[.3,1], spacing=0)
+			optionlayout.add_widget(updown)
+		
+		self.options = {}
+		
+		options = []
+		if showupdown:
+			options += [[u"\u25b3", self.select_up, updown], [u"\u25bd", self.select_down, updown]]
+		
+		options += [["Play", self.dobutton], ["Up", self.esc], ["Refresh", self.refresh], ["Delete", self.delete], ["Folder Rename", self.folderrename], ["Rename", self.rename],
 			["Change Image", self.imageselector], ["Toggle Watched", self.togglewatched], ["Show Full Names", self.togglenamedisplay],
 			["Sort", self.togglesort], ["Show Watched", self.toggleshowwatched]]
 
-		optionlayout = BoxLayout(orientation="vertical", pos_hint={'center_x':.5, 'center_y':.35}, size_hint=[1,.7], spacing=self.buttonspacing)
-		sidebarlayout.add_widget(optionlayout)
-
-		self.options = {}
-
 		for opt in options:
-			text, command = opt
+			parent = optionlayout
+			if len(opt) > 2:
+				parent = opt[2]
+			text, command = opt[0], opt[1]
 			button = gradientButton()
-			optionlayout.add_widget(button)
+			parent.add_widget(button)
 			button.font_size='30sp'
 			button.font_name = '/usr/share/pyshared/kivy/data/fonts/DejaVuSans.ttf'
 			button.text = text
@@ -1354,9 +1697,9 @@ class KMCApp(App):
 #		Cache._categories['kv.loader']['timeout'] = None
 #		self.loadimages()
 
-		for f in os.listdir(tvfolder):
-			fullf = os.path.join(tvfolder, f)
-			name = save.names[fullf][0]
+		for show in save.allshows.getchildren():
+#			fullf = os.path.join(tvfolder, f)
+			name = show.getname()[0]#save.names[fullf][0]
 			save.watchedset.add(name)
 		
 #		for f in save.names.keys():
@@ -1368,6 +1711,9 @@ class KMCApp(App):
 		
 #		for f in save.watchedset:
 #			print f
+		
+		if os.path.exists(startupscript):
+			p = subprocess.Popen([startupscript])
 		
 		return self.sm#fllayout
 
@@ -1382,6 +1728,9 @@ class KMCApp(App):
 
 	def delete(self):
 		if tkMessageBox.askyesno("Delete", "Delete?", default="no"):
+			ep = self.buttons[self.selectedindex].ep
+			ep.delete()
+			"""
 			path = self.buttons[self.selectedindex].path
 			name = self.buttons[self.selectedindex].name
 			if send2trash != None:
@@ -1391,31 +1740,36 @@ class KMCApp(App):
 				send2trash(path)
 			else:
 				tkMessageBox.showerror("No trash library", "install Send2Trash library (sudo pip install Send2Trash)")
+			"""
 		self.refresh()
 
 	def lookfordownloadupdate(self, *args):
 #		self.updatedownloaded()
+		"""
 		files = os.listdir(self.infolder)
 		for f in files:
 			foundbutton = False
 			for b in self.buttons:
-				bname = os.path.basename(b.path)
+				bname = b.ep.getpathname()
 				if f == bname:
 					foundbutton = True
 					break
 			if foundbutton == False:
 				self.refresh()
 				break
+		"""
+		self.refresh()
 
 	def enterfolder(self, folder, up=False):
-		self.infolder = os.path.normpath(folder)
-		if self.infolder == tvfolder:
-			self.up = None
-		else:
-			self.up = os.path.normpath(os.path.join(folder, ".."))
-		name, epnumber = save.names[self.infolder]
-		if name == None:
-			name = os.path.basename(self.infolder)
+		self.infolder = folder#os.path.normpath(folder)
+#		if self.infolder == save.:
+#			self.up = None
+#		else:
+#			self.up = os.path.normpath(os.path.join(folder, ".."))
+		name, epnumber = self.infolder.getname()
+#		name, epnumber = save.names[self.infolder]
+#		if name == None:
+#			name = os.path.basename(self.infolder)
 		self.titlelabel.text = name
 #		if up == False:
 #			if self.up != []:
@@ -1431,23 +1785,26 @@ class KMCApp(App):
 #			self.scroll.update_from_scroll()
 
 	def refresh(self, *args):
-		folder = self.infolder
-		l = os.listdir(folder)
-		l = [os.path.join(folder, path) for path in l]
-		l.sort()
-		if not save.showwatched and folder == tvfolder:
-			l = [path for path in l if not save.watched[path]]
+#		folder = self.infolder
+		l = self.infolder.getchildren()
+#		l = os.listdir(folder)
+#		l = [os.path.join(folder, path) for path in l]
+#		l.sort()
+		
+		if not save.showwatched and self.infolder == save.allshows:
+			l = [child for child in l if not child.getwatched()]#save.watched[path]]
 
-		if len(save.scrollstate[folder]) == 2:
-			selectindex, top = save.scrollstate[folder]
+		scrollstate = self.infolder.getscrollstate()
+		if len(scrollstate) == 2:
+			selectindex, top = scrollstate#save.scrollstate[folder]
 			name=None
 		else:
-			selectindex, top, name = save.scrollstate[folder]
+			selectindex, top, name = scrollstate#save.scrollstate[folder]
 
 		self.populatebuttons(l)
-
+		
 		self.layouttop = top
-
+		
 		for index, button in enumerate(self.buttons):
 			if button.name == name:
 				selectindex = index
@@ -1472,30 +1829,32 @@ class KMCApp(App):
 ##		self.layout.clear_widgets()
 		self.buttons = []
 #		updir = os.path.normpath(os.path.join(self.infolder, ".."))#self.up[-1][0]
-		if self.up == None:
-			updirname = "TV Shows"
-		else:
-			updir = os.path.basename(self.up)
-			updirname = changename(updir, takeoutnumbers=True, dosearch=dogooglesearch, title=True)
+		
+#		if self.up == None:
+#			updirname = "TV Shows"
+#		else:
+#			updir = os.path.basename(self.up)
+#			updirname = changename(updir, takeoutnumbers=True, dosearch=dogooglesearch, title=True)
 
 		allfiles = [[] for f in l]
 
-		for index, path in enumerate(l):
-			name, epnumber = save.names[path]
-			allfiles[index] = [path, name, epnumber]
+		for index, ep in enumerate(l):
+			name, epnumber = ep.getname()#save.names[path]
+			allfiles[index] = [ep, name, epnumber]
 
 		allfiles.sort(key=lambda f : f[1]) # name
 		allfiles.sort(key=lambda f : f[2]) # number
-
-		if self.up == None:
+		
+		if self.infolder == save.allshows:
 			if save.sort == SORT_WATCHED:
-				allfiles.sort(key=lambda f : save.lastwatched[f[0]], reverse=True)
+				allfiles.sort(key=lambda f : f[0].getlastwatched(), reverse=True)
 			elif save.sort == SORT_CREATED:
-				allfiles.sort(key=lambda f : save.created[f[0]], reverse=True)#os.path.getctime(f[0]), reverse=True)
-
-
+				allfiles.sort(key=lambda f : f[0].getcreated(), reverse=True)#os.path.getctime(f[0]), reverse=True)
+			elif save.sort == SORT_SIZE:
+				allfiles.sort(key=lambda f : f[0].getsize(), reverse=True)
+		
 		episodes = [f[2] for f in allfiles if f[2] != None]
-
+		
 		for path, name, epnumber in allfiles:
 			missingprevepisode = False
 			if epnumber != None:
@@ -1521,12 +1880,15 @@ class KMCApp(App):
 #			self.layout.add_widget(b)
 
 		if len(self.buttons) == 0:
-			if self.up == None:
-				text = "There are no TV Shows in\n"
+			if self.infolder == save.allshows:
+				text = "There are no TV Shows in\n" + tvfolder
 			else:
-				text = "There are no files in\n"
-			text += self.infolder+"\nTry adding some!"
-			b = abutton(os.path.join(self.infolder, "NOTAFILE"), self, text)
+				if hasattr(self.infolder, "path"):
+					text = "There are no files in\n" + self.infolder.path
+				else:
+					text = "There are no files here\n"
+			text += "\nTry adding some!"
+			b = abutton(notafile, self, text)
 			self.buttons.append(b)
 
 #		self.updatedownloaded()
@@ -1545,15 +1907,15 @@ class KMCApp(App):
 	def loadimages(self):
 #		dirs = os.listdir(save.tvfolder)
 #		dirs = [os.path.join(save.tvfolder, d) for d in dirs]
-		dirs = [d for d in save.images.keys() if os.path.exists(d)]
+		dirs = [d for d in save.images.keys()]# if os.path.exists(d)]
 		for d in dirs:
 			print save.images[d]
 			imgpath = save.images[d]
 			self.loadimage(imgpath)
 
 	def refreshimage(self):
-		if self.up == None:
-			path = self.buttons[self.selectedindex].path
+		if self.infolder == save.allshows:
+			path = self.buttons[self.selectedindex].ep
 		else:
 			path = self.buttons[self.selectedindex].showfolder
 
@@ -1573,7 +1935,7 @@ class KMCApp(App):
 #		if self.up == None:
 #			imgpath = self.baseimagepath
 #		else:
-		imgpath = save.images[path]
+		imgpath = path.getimage()#save.images[path]
 
 #		if imgpath in self.imagesloaders and self.imagesloaders[imgpath].loaded:
 #			self.backgroundimage.texture = self.imagesloaders[imgpath].image.texture
@@ -1612,10 +1974,8 @@ class KMCApp(App):
 		selectedbutton = self.buttons[newindex]
 		selectedbutton.select()
 
-		if self.up == None:
+		if self.infolder == save.allshows:
 			self.refreshimage()
-
-			save.infolder = selectedbutton.path
 
 		self.clearbuttons()
 
@@ -1629,7 +1989,7 @@ class KMCApp(App):
 				b = self.buttons[i]
 				self.layout.add_widget(b)
 
-		save.scrollstate[self.infolder] = [self.selectedindex, self.layouttop, self.buttons[self.selectedindex].name]
+		self.infolder.setscrollstate([self.selectedindex, self.layouttop, self.buttons[self.selectedindex].name])
 
 		"""
 			if not noscroll:
@@ -1712,28 +2072,36 @@ class KMCApp(App):
 	def select_down(self):
 		if self.selectedindex != len(self.buttons) - 1:
 			self.select(self.selectedindex + 1)
+	
+	def select_up(self):
+		if self.selectedindex != 0:
+			self.select(self.selectedindex - 1)
+
 
 	def rename(self):
-		loc = self.buttons[self.selectedindex].path
-		oldname = save.names[loc]
-		newname = tkSimpleDialog.askstring("Rename", loc, initialvalue=oldname[0], parent=root)
+		loc = self.buttons[self.selectedindex].ep
+		oldname = loc.getname()
+		newname = tkSimpleDialog.askstring("Rename", loc.getpathname(), initialvalue=oldname[0], parent=root)
 		if newname == "":
-			del save.names[loc]
+			del save.names[loc.getkey()]
 		elif newname != None:
 			if newname.isdigit():
-				save.names[loc] = [oldname[0], int(newname)]
+#				save.names[loc] = [oldname[0], int(newname)]
+				loc.setname([oldname[0], int(newname)])
 			else:
-				save.names[loc] = [newname, None]
+#				save.names[loc] = [newname, None]
+				loc.setname([newname, None])
 		self.refresh()
 
 	def esc(self):
 		saveclassinst.dosave()
-		if self.up == None:
+		if self.infolder == save.allshows:
 			EventLoop.close()
 		else:
 			if self.allwatched():
-				save.watched[self.infolder] = True
-			self.enterfolder(self.up)#os.path.normpath(os.path.join(self.infolder, "..")), up=True)
+				self.infolder.setwatched(True)
+				#save.watched[self.infolder] = True
+			self.enterfolder(self.infolder.getparent())#os.path.normpath(os.path.join(self.infolder, "..")), up=True)
 
 	def dobutton(self):
 		self.buttons[self.selectedindex].pressed()
@@ -1741,13 +2109,13 @@ class KMCApp(App):
 	def folderrename(self):
 		if tkMessageBox.askyesno("Rename", "Rename this directory?"):
 			print "rename"
-			namedir(self.infolder, True)
+			namedir(self.infolder.getchildren(), True)
 		self.refresh()
 
 	def imageselector(self):
 		path = None
-		if self.up == None:
-			path = self.buttons[self.selectedindex].path
+		if self.infolder == save.allshows:
+			path = self.buttons[self.selectedindex].ep
 		else:
 			path = self.buttons[self.selectedindex].showfolder
 
@@ -1780,7 +2148,7 @@ class KMCApp(App):
 		self.buttons[self.selectedindex].togglechecked()
 
 	def toggleshowwatched(self):
-		selectedpath = self.buttons[self.selectedindex].path
+#		selectedpath = self.buttons[self.selectedindex].ep
 		save.showwatched = not save.showwatched
 		self.refresh()
 
@@ -1799,8 +2167,9 @@ class KMCApp(App):
 #		print key
 #		print key, modifiers
 		if key == 'up':
-			if self.selectedindex != 0:
-				self.select(self.selectedindex - 1)
+#			if self.selectedindex != 0:
+#				self.select(self.selectedindex - 1)
+			self.select_up()
 		elif key == 'down':
 			self.select_down()
 		elif key == "escape":
@@ -1994,20 +2363,24 @@ class KMCApp(App):
 
 	def setimage(self, tvpath, imgpath):
 		ending = "png"
-		newimagename = os.path.basename(tvpath) + "." + ending
+		newimagename = tvpath.getpathname() + "." + ending
 		downloadfolder = imagesfolder
 		newimagepath = os.path.join(downloadfolder, newimagename)
 		if os.path.exists(newimagepath):
 			os.remove(newimagepath)
 
-		img = Image(source=imgpath)
-		img.texture.save(newimagepath)
-		save.setimage(tvpath, newimagepath)
+		try:
+			img = Image(source=imgpath)
+			img.texture.save(newimagepath)
+			save.setimage(tvpath.getkey(), newimagepath)
 
-		self.loadimage(newimagepath)
-#		self.imagesloaders[newimagepath].image = img
+			self.loadimage(newimagepath)
+	#		self.imagesloaders[newimagepath].image = img
 
-		self.refreshimage()
+			self.refreshimage()
+		except Exception as e:
+			print e
+			print "Could not open file"
 
 	def togglesort(self, toggle=True):
 		if toggle:
@@ -2025,6 +2398,8 @@ class KMCApp(App):
 			button.text = "Sort: Watched"
 		elif save.sort == SORT_CREATED:
 			button.text = "Sort: Created"
+		elif save.sort == SORT_SIZE:
+			button.text = "Sort: Size"
 
 #		selectedpath = self.buttons[self.selectedindex].path
 #
@@ -2040,6 +2415,11 @@ class KMCApp(App):
 #			self.select(0)
 #		else:
 #			self.select(selectbutton)
+
+saveclassinst = saveclass()
+save = saveclassinst.savestatevar
+
+notafile = episode(os.path.join(tvfolder, "NOTAFILE"), save.allshows)
 
 app = KMCApp()
 subprocess.Popen("wmctrl -r \":ACTIVE:\" -b toggle,fullscreen", shell=True)
