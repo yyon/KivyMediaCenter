@@ -125,7 +125,7 @@ useoutlines = False
 showupdown = False
 
 usempv = True
-usebumblebee = False
+usebumblebee = True
 
 class dictwithdefault(UserDict):
 	def __init__(self, default=None):
@@ -170,7 +170,8 @@ class savedata(object):
 			"sort":SORT_ALPHABETICAL,
 			"watchedset":set(),
 			"created":dictwithdefault(),
-			"allshows":allshowsclass()}
+			"allshows":allshowsclass(),
+			"triedimage":set()}
 
 		for var in v:
 			value = v[var]
@@ -1242,7 +1243,25 @@ class pathobj(object):
 		return save.images[self.getkey()]
 		
 	def defaultimage(self):
-		return defaultimageloc
+		if not self.gettriedimage():
+			
+			gimages = findimage(self)
+
+			for gimage in gimages:
+				result = app.doimagedownload(self, gimage)
+				if result:
+					break
+			
+			self.settriedimage()
+		else:
+			return defaultimageloc
+		
+	def deleteimage(self):
+		if self.getkey() in save.images.keys():
+			del save.images[self.getkey()]
+	
+	def hasimage(self):
+		return self.getkey() in save.images.keys()
 		
 	def setimage(self, image):
 		save.images[self.getkey()] = image
@@ -1277,6 +1296,13 @@ class pathobj(object):
 		for child in self.getchildren():
 			size += child.getsize()
 		return size
+	
+	def gettriedimage(self):
+		return self.getkey() in save.triedimage
+	
+	def settriedimage(self):
+		if not self.getkey() in save.triedimage:
+			save.triedimage.add(self.getkey())
 
 class allshowsclass(pathobj):
 	def __init__(self):
@@ -2357,30 +2383,48 @@ class KMCApp(App):
 		if gimage != None:
 			url = gimage.url
 			temp = downloadtempimage(url)
-			self.setimage(loc, temp)
+			result = self.setimage(loc, temp)
 			#save.downloadimage(loc, url)
 		self.sm.current="default"
+		return result
 
 	def setimage(self, tvpath, imgpath):
+		if tvpath.hasimage():
+			path = tvpath.getimage()
+			basename = os.path.basename(path)
+			number = basename.rsplit(".", 2)
+			if len(number) == 3:
+				number = int(number[1])
+				number += 1
+			else:
+				number = 1
+			os.remove(path)
+		else:
+			number = 1
+		
 		ending = "png"
-		newimagename = tvpath.getpathname() + "." + ending
+		middle = "." + str(number)
+		newimagename = tvpath.getpathname() + middle + "." + ending
 		downloadfolder = imagesfolder
 		newimagepath = os.path.join(downloadfolder, newimagename)
-		if os.path.exists(newimagepath):
-			os.remove(newimagepath)
-
+		
 		try:
+			# temporarily set as default image
 			img = Image(source=imgpath)
 			img.texture.save(newimagepath)
-			save.setimage(tvpath.getkey(), newimagepath)
-
+			tvpath.setimage(newimagepath)
+			#save.setimage(tvpath.getkey(), newimagepath)
 			self.loadimage(newimagepath)
-	#		self.imagesloaders[newimagepath].image = img
-
+			#self.imagesloaders[newimagepath].image = img
+			
 			self.refreshimage()
+			
+			return True
 		except Exception as e:
 			print e
 			print "Could not open file"
+			
+			return False
 
 	def togglesort(self, toggle=True):
 		if toggle:

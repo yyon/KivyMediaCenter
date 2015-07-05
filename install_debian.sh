@@ -1,3 +1,3 @@
 #!/usr/bin/env bash
 
-sudo apt-get install python-kivy wmctrl smplayer
+sudo apt-get install python-kivy wmctrl mpv python-tk python-simplejson
