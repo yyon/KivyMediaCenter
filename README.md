@@ -8,5 +8,6 @@ Similar to xbmc
 
 # Features:
 - auto-renaming
+- auto-organizing
 - backgrounds
-- playback in SMPlayer
+- playback in mpv

@@ -26,6 +26,7 @@ from kivy.uix.scrollview import ScrollView
 from kivy.uix.gridlayout import GridLayout
 from kivy.uix.label import Label
 from kivy.uix.button import Button
+from kivy.uix.checkbox import CheckBox
 from kivy.uix.floatlayout import FloatLayout
 from kivy.uix.image import Image
 from kivy.uix.image import AsyncImage
@@ -106,11 +107,7 @@ SORT_CREATED = "Created"
 SORT_SIZE = "Size"
 SORTING = [SORT_ALPHABETICAL, SORT_WATCHED, SORT_CREATED, SORT_SIZE]
 
-useoutlines = False
 showupdown = False
-
-usempv = True
-usebumblebee = False
 
 class dictwithdefault(UserDict):
 	def __init__(self, default=None):
@@ -137,6 +134,8 @@ def getcreatedtime(f):
 	return os.path.getctime(f)
 
 class savedata(object):
+	"""Class that is persistent (pickle)"""
+
 	def makevars(self):
 		v = {"showwatched":True,
 			"watched":dictwithdefault(),
@@ -148,7 +147,9 @@ class savedata(object):
 			"watchedset":set(),
 			"created":dictwithdefault(),
 			"allshows":allshowsclass(),
-			"triedimage":set()}
+			"triedimage":set(),
+			"usempv":True,
+			"usebumblebee":False}
 
 		for var in v:
 			value = v[var]
@@ -191,6 +192,8 @@ def renamefiles(loc):
 	namedir(os.path.dirname(loc))
 
 class saveclass():
+	"""manages savedata"""
+
 	def __init__(self):
 		global saveclassinst
 		saveclassinst = self
@@ -234,6 +237,7 @@ class saveclass():
 		f.close()
 
 class numpos(object):
+	"""holds a number and its position in the string"""
 	def __init__(self, numindex, strindex, num):
 		self.numindex, self.strindex, self.num = numindex, strindex, num
 
@@ -270,6 +274,7 @@ def getnumbers(string):
 	return nums
 
 def namedir(l, override=False):
+	"""Looks for episode numbers"""
 	print "naming dir"
 
 	global torrenteps
@@ -373,6 +378,8 @@ defaultimageloc = os.path.join(kmcfolder, "default.jpg")
 if not os.path.exists(defaultimageloc):
 	defaultimageloc = os.path.join(module_locator.module_path(), "default.jpg")
 
+mpvinputconf = os.path.join(module_locator.module_path(), "input.conf")
+
 checkmark = u"\u2713"
 
 dogooglesearch = False
@@ -395,6 +402,7 @@ class googleimage():
 		self.url, self.previewurl, self.size, self.page = url, previewurl, size, page
 
 def imagesearch(searchTerm, page):
+	"""Searches google images"""
 	searchTerm = searchTerm.replace(' ','%20')
 
 	count= 0
@@ -462,6 +470,7 @@ def removeregex(string, regex):
 		return string
 
 def changename(basename, toremove=None, number=False, takeoutnumbers=False, dosearch=False, title=False):
+	"""Names shows (not episodes)"""
 	global opedcounter, torrenteps, othercounter
 	newbasename = basename
 	for whitespace in whitespaces:
@@ -566,6 +575,8 @@ buttonerrortexture = Gradient.horizontal(errorcolor, errorcolor[:3] + (0,))
 rightbuttonnormaltexture = Gradient.horizontal(buttoncolor[:3] + (0,), buttoncolor)
 
 class abutton(AnchorLayout):
+	"""Buttons to the left"""
+
 	def __init__(self, ep, app, name=None):
 		AnchorLayout.__init__(self)#, size_hint=(.9, None), height='60dp')
 
@@ -657,26 +668,7 @@ class abutton(AnchorLayout):
 			self.label.text = self.ep.getpathname()
 
 	def pressed(self, *args):
-		if isinstance(self.ep, episode):
-			self.ep.setwatched(True)
-			self.check()
-			self.showfolder.setlastwatched(time.gmtime())
-			self.app.select_down()
-			path = self.ep.path
-
-			if usempv:
-				new_env = os.environ.copy()
-				new_env["VDPAU_DRIVER"] = "va_gl"
-				new_env["DRI_PRIME"] = "1"
-				command = ["mpv", path, "--fullscreen", "--display-fps=60"]
-				if usebumblebee:
-					command = ["primusrun"] + command + ["--vo=opengl-hq:scale=ewa_lanczossharp"]
-				subprocess.Popen(command, env=new_env)
-			else:
-				subprocess.Popen(["smplayer", "-fullscreen", "-close-at-end", path])
-		else:
-			self.app.enterfolder(self.ep)
-
+		self.ep.pressed()
 
 	def redrawsize(self, *args):
 		pass
@@ -735,6 +727,8 @@ class abutton(AnchorLayout):
 			self.rect.texture = buttonerrortexture
 
 class gradientButton(Button):
+	"""Buttons to the right"""
+
 	def __init__(self, *args, **kwargs):
 		kwargs["halign"]="right"
 		if not "valign" in kwargs:
@@ -783,6 +777,8 @@ class clock(AnchorLayout):
 
 
 class pathobj(object):
+	"""Base object for shows and episodes"""
+
 	def __init__(self):
 		pass
 
@@ -898,7 +894,12 @@ class pathobj(object):
 		if not self.getkey() in save.triedimage:
 			save.triedimage.add(self.getkey())
 
+	def pressed(self):
+		app.enterfolder(self)
+
 class allshowsclass(pathobj):
+	"""Root for shows"""
+
 	def __init__(self):
 		self.shows = []
 
@@ -960,6 +961,8 @@ class show(pathobj):
 			child.delete()
 
 class foldershow(show):
+	"""Shows which are an actual folder"""
+
 	def __init__(self, path):
 		show.__init__(self)
 		self.path = path
@@ -994,6 +997,7 @@ class foldershow(show):
 		os.rmdir(self.path)
 
 def stripname(name, stripnums = True):
+	"""Episode name -> string which is the same for all episodes in the same show"""
 	for pattern in removestuffregex:
 		name = re.sub(pattern, "", name)
 	if stripnums:
@@ -1003,6 +1007,8 @@ def stripname(name, stripnums = True):
 	return name
 
 class strshow(show):
+	"""Guesses which files belong to the same show"""
+
 	def __init__(self, showstr):
 		show.__init__(self)
 		self.showstr = showstr
@@ -1072,7 +1078,28 @@ class episode(filesyspath):
 		print "DELETING:", self.path
 		os.remove(self.path)
 
+	def pressed(self):
+		self.setwatched(True)
+		self.getparent().setlastwatched(time.gmtime())
+		app.select_down()
+		app.refresh()
+		path = self.path
+
+		if save.usempv:
+			new_env = os.environ.copy()
+			new_env["VDPAU_DRIVER"] = "va_gl"
+			new_env["DRI_PRIME"] = "1"
+			command = ["mpv", path, "--fullscreen", "--input-conf="+mpvinputconf] # "--display-fps=60",
+			if save.usebumblebee:
+				command = ["primusrun"] + command + ["--vo=opengl-hq:scale=ewa_lanczossharp"]
+			subprocess.Popen(command, env=new_env)
+		else:
+			subprocess.Popen(["smplayer", "-fullscreen", "-close-at-end", path])
+
+
 class folder(filesyspath):
+	"""Folders which aren't shows"""
+
 	def __init__(self, path, up):
 		filesyspath.__init__(self, path, up)
 
@@ -1095,12 +1122,16 @@ class folder(filesyspath):
 		os.rmdir(self.path)
 
 class KMCApp(App):
+	"""Main Class"""
 	def build(self):
 		Window.clearcolor = (0,0,0,0)
 
 		self.imagesloaders = {}
 
 		self.sm = ScreenManager()
+
+		""" Main Screen """
+
 		self.defaultscreen = Screen(name="default")
 		self.sm.add_widget(self.defaultscreen)
 
@@ -1117,7 +1148,7 @@ class KMCApp(App):
 		self.backgroundimage = Image(pos_hint={'center_x':.5, 'center_y':.5}, size_hint=[1,3], allow_stretch=True)
 		fllayout.add_widget(self.backgroundimage)
 
-		contentlayout = FloatLayout(pos_hint={'center_x':.5, 'center_y':.5}, size_hint=[1,1])#(.95, .95))
+		contentlayout = FloatLayout(pos_hint={'center_x':.5, 'center_y':.5}, size_hint=[1,1])
 		fllayout.add_widget(contentlayout)
 
 		leftsidelayout = FloatLayout(pos_hint={'center_x':.325, 'center_y':.5}, size_hint=(.65, 1))
@@ -1181,8 +1212,11 @@ class KMCApp(App):
 		if showupdown:
 			options += [[u"\u25b3", self.select_up, updown], [u"\u25bd", self.select_down, updown]]
 
-		options += [["Play", self.dobutton], ["Up", self.esc], ["Refresh", self.refresh], ["Delete", self.delete], ["Folder Rename", self.folderrename], ["Rename", self.rename],
-			["Change Image", self.imageselector], ["Toggle Watched", self.togglewatched], ["Show Full Names", self.togglenamedisplay],
+		# buttons to the right
+		options += [["Play", self.dobutton], ["Up", self.esc], ["Refresh", self.refresh],
+			["Delete", self.delete], ["Folder Rename", self.folderrename], ["Rename", self.rename],
+			["Change Image", self.imageselector], ["Settings", self.showsettings],
+			["Toggle Watched", self.togglewatched], ["Show Full Names", self.togglenamedisplay],
 			["Sort", self.togglesort], ["Show Watched", self.toggleshowwatched]]
 
 		for opt in options:
@@ -1201,6 +1235,8 @@ class KMCApp(App):
 			self.options[text] = button
 
 		self.togglesort(toggle=False)
+
+		""" Google Images image selector screen """
 
 		self.imgwin = Screen(name="images")
 		self.sm.add_widget(self.imgwin)
@@ -1227,10 +1263,48 @@ class KMCApp(App):
 		self.localimgbutton.bind(on_press=self.localimageselector)
 		self.imgwin.add_widget(self.localimgbutton)
 
+		""" Settings Screen """
+
+		self.settingsscreen = Screen(name="settings")
+		self.sm.add_widget(self.settingsscreen)
+
+		self.settingsscroll = ScrollView()
+		self.settingsscreen.add_widget(self.settingsscroll)
+
+		self.settingsgrid = GridLayout(cols=2, spacing=10)
+		self.settingsscroll.add_widget(self.settingsgrid)
+
+		def getcheckbox (checkbox):
+			return checkbox.active
+		def setcheckbox(checkbox, active):
+			checkbox.active = active
+
+		# label, widget, save variable, getter, setter
+
+		self.settings = [
+			["Use MPV", CheckBox(), "usempv", getcheckbox, setcheckbox],
+			["Use Bumblebee", CheckBox(), "usebumblebee", getcheckbox, setcheckbox],
+			]
+
+		for labeltext, widget, savevar, getter, setter in self.settings:
+			label = Label(text=labeltext)
+			self.settingsgrid.add_widget(label)
+			self.settingsgrid.add_widget(widget)
+			setter(widget, getattr(save, savevar))
+
+		self.settingscancel = Button(text="Cancel")
+		self.settingscancel.bind(on_press=partial(self.finishsettings, False))
+		self.settingsgrid.add_widget(self.settingscancel)
+
+		self.settingsok = Button(text="Done")
+		self.settingsok.bind(on_press=partial(self.finishsettings, True))
+		self.settingsgrid.add_widget(self.settingsok)
+
+		""" End of building screens """
+
 		for show in save.allshows.getchildren():
 			name = show.getname()[0]
 			save.watchedset.add(name)
-
 
 		if os.path.exists(startupscript):
 			p = subprocess.Popen([startupscript])
@@ -1701,6 +1775,15 @@ class KMCApp(App):
 			button.text = "Sort: Size"
 
 		self.refresh()
+
+	def showsettings(self):
+		self.sm.current = "settings"
+
+	def finishsettings(self, dosave, widget):
+		if dosave:
+			for labeltext, widget, savevar, getter, setter in self.settings:
+				setattr(save, savevar, getter(widget))
+		self.sm.current = "default"
 
 saveclassinst = saveclass()
 save = saveclassinst.savestatevar
