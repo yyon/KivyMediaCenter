@@ -109,7 +109,7 @@ root.withdraw()
 
 buttoncolor=(0,0,0,0)
 selectedcolor=(1,0,0.4,0.3)
-errorcolor=(1,0,0,0.4)
+errorcolor=(1,1,0,0.4)
 textcolor=(0,0,0,1)#(1,1,1,1)
 BACKOPACITY = 0.2
 backgroundcolor=(1,1,1,BACKOPACITY)
@@ -125,7 +125,7 @@ useoutlines = False
 showupdown = False
 
 usempv = True
-usebumblebee = True
+usebumblebee = False
 
 class dictwithdefault(UserDict):
 	def __init__(self, default=None):
