@@ -1,6 +1,11 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 
+#TODO
+# make it work on other computers
+# don't have errors
+# settings
+
 import module_locator
 import subprocess
 import os
@@ -14,9 +19,6 @@ except ImportError:
 
 from kivy.config import Config
 
-#Config.set('graphics', 'width', 1000)
-#Config.set('graphics', 'height', 1000)
-#Config.set('graphics', 'fullscreen', 'fake')
 Config.set('kivy', 'log_level', 'warning')
 
 from kivy.app import App
@@ -50,13 +52,8 @@ from kivy.lang import Builder
 from kivy.properties import ListProperty
 from kivy.graphics import *
 from kivy.graphics.texture import Texture
-#from effectwidget.EffectBase import HorizontalBlurEffect, VerticalBlurEffect
-
-#from kivy.clock import Clock
-#Clock.max_iteration = 50
 
 import pickle
-#import dogtail.rawinput
 import re
 import operator
 import copy
@@ -65,7 +62,6 @@ import tkMessageBox
 import Tkinter
 import sys
 import time
-#from urllib import FancyURLopener
 import urllib2
 import urllib
 import simplejson
@@ -81,17 +77,6 @@ from functools import partial
 from collections import OrderedDict, Counter
 from urllib2 import urlopen
 from tkFileDialog import askopenfilename
-#import fcntl
-
-#try:
-#	from send2trash import send2trash
-#except ImportError:
-#	send2trash = None
-
-#TODO
-# make it work on other computers
-# don't have errors
-# settings
 
 def timeme(method):
 	def wrapper(*args, **kw):
@@ -130,12 +115,7 @@ usebumblebee = False
 class dictwithdefault(UserDict):
 	def __init__(self, default=None):
 		UserDict.__init__(self)
-#		self.value = {}
 		self.default = default
-#	def __set__(self, instance, value):
-#		self.value = value
-#	def __iter__(self):
-#		return self.value.__iter__()
 
 	def __getitem__(self, key):
 		if key in self.keys():
@@ -152,9 +132,6 @@ class dictwithdefault(UserDict):
 					return None
 			else:
 				return self.default
-
-#	def __setitem__(self, key, value):
-#		self.value.__setitem__(key, value)
 
 def getcreatedtime(f):
 	return os.path.getctime(f)
@@ -179,30 +156,13 @@ class savedata(object):
 				print "MAKE", var
 				setattr(self, var, value)
 			value = getattr(self, var)
-		
+
 		self.watched.default = False
 		self.names.default = renamefiles
 		self.images.default = defaultimageloc
 		self.created.default = getcreatedtime
 		self.scrollstate.default = [0,0,None]
 		self.lastwatched.default = dictwithdefault(time.gmtime(0))
-
-#			print var, value
-
-#			if isinstance(value, dictwithdefault):
-#				setattr(self, var, value.value)
-#		saveclassinst.dosave()
-#			if isinstance(value, dict):
-#				print var, value
-#				for key in value:
-#					val = value[key]
-#					v[var][key] = val
-#				setattr(self, var, v[var])
-#			saveclassinst.dosave()
-
-#		for showname in self.images.keys():
-#			if self.images[showname] == "default.jpg":
-#				del self.images[showname]
 
 	def setimage(self, tvpath, imgpath):
 		if tvpath in self.images:
@@ -213,25 +173,6 @@ class savedata(object):
 		self.images[tvpath] = imgpath
 
 def downloadtempimage(url):
-	"""
-	temp = tempfile.mktemp()
-	downloadimage(url, temp)
-	imgtype = imghdr.what(temp)
-	ending = ""
-	if imgtype != None:
-		ending = "." +imgtype
-	while True:
-		filename = str(random.randrange(0, 10000))
-		imagepath = os.path.join(imagesfolder, filename + ending)
-		if not os.path.exists(imagepath):
-			 break
-
-	shutil.move(temp, imagepath)
-
-	print "saved to", imagepath
-
-	self["images"][loc] = imagepath
-	"""
 	temp = tempfile.mktemp()
 	print url, temp
 	downloadimage(url, temp)
@@ -253,7 +194,7 @@ class saveclass():
 	def __init__(self):
 		global saveclassinst
 		saveclassinst = self
-		self.savestatevar = savedata()#{"infolder":self.tvfolder, "showwatched":True, "watched":{}, "names":{}, "images":{}, "scrollstate":{}}
+		self.savestatevar = savedata()
 
 		self.allfolders = [tvfolder, kmcfolder, imagesfolder]
 		self.allfiles = [savefile]
@@ -272,19 +213,6 @@ class saveclass():
 	def loadall(self):
 		self.savestatevar = self.load(savefile, self.savestatevar)
 		self.savestatevar.makevars()
-#		for index in newsavestatevar:
-#			self.savestatevar[index] = newsavestatevar[index]
-#		self.watched = self.load(self.watchedfile, self.watched)
-#		self.names = self.load(self.namesfile, self.names)
-#		self.images = self.load(self.imagesfile, self.images)
-
-	"""
-	def __iter__(self):
-		return self.savestatevar.__iter__()
-
-	def __getitem__(self, key):
-		return self.savestatevar.__getitem__(key)
-	"""
 
 	def load(self, loc, defaultdata):
 		if os.path.exists(loc):
@@ -298,84 +226,9 @@ class saveclass():
 
 		return data
 
-	"""
-	def savestate(self, name, value):
-		self.savestatevar[name] = value
-
-	def dosave(self):
-		self.save(self.savestatevar, self.savefile)
-
-	def loadstate(self, name):
-		if name in self.savestatevar:
-			return self.savestatevar[name]
-	"""
-
-#	def getwatched(self, loc):
-#		if loc in self["watched"]:
-#			return self["watched"][loc]
-#		else:
-#			self.setwatched(loc, False)
-#			return False
-
-	"""
-	def nextimage(self, loc):
-		imagepath, imageurls, imagenum, page = self["images"][loc]
-		if imagepath != None:
-			os.remove(os.path.join(self.imagesfolder, imagepath))
-		imagenum += 1
-		if imagenum >= len(imageurls):
-			page += 1
-			imageurls = findimage(loc, page)
-			imagenum = 0
-		while True:
-			fileending = imageurls[imagenum].rsplit(".", 1)[1][:5]
-			filename = str(random.randrange(0, 10000)) + "." + fileending
-			filename = filename.replace("/", "")
-			imagepath = os.path.join(save.imagesfolder, filename)
-			if not os.path.exists(imagepath):
-				break
-		downloadimage(imageurls[imagenum], imagepath)
-		self["images"][loc] = [imagepath, imageurls, imagenum, page]
-#		self.save(self.images, self.imagesfile)u
-		self["images"][loc] = [imagepath, imageurls]
-
-	def resetimageindex(self, loc):
-#		images = findimage(loc)
-#		self["images"][loc] = [None, images, -1, 0]
-#		self.nextimage(loc)
-
-		pickimage(loc)
-
-#		imagepath = images[0]
-	"""
-
-	"""
-	def getimage(self, loc):
-		if not (loc in self["images"]) or not os.path.exists(self["images"][loc][0]):
-			return self.defaultimageloc#self["images"][loc] = [self.defaultimageloc]
-#			self.resetimageindex(loc)
-		return self["images"][loc][0]
-
-	def getname(self, loc):
-		if loc in self["names"] and self["names"][loc] != None:
-			return self["names"][loc]
-		else:
-			namedir(os.path.dirname(loc))
-#			self.setwatched(loc, False)
-			return self.getname(loc)
-
-	def setwatched(self, loc, watched):
-		self["watched"][loc] = watched
-#		self.save(self.watched, self.watchedfile)
-#		self.savestatevar()
-
-	def setname(self, loc, name):
-		self["names"][loc] = name
-	"""
-
 	def save(self, data, loc):
 		shutil.copyfile(loc, loc+".bak") # make backup
-		
+
 		f = open(loc, "w")
 		pickle.dump(data, f)
 		f.close()
@@ -422,23 +275,16 @@ def namedir(l, override=False):
 	global torrenteps
 	torrenteps = []
 
-#	l = os.listdir(folder)
-#	l = [os.path.join(folder, path) for path in l]
-#	l.sort()
-	
 	files = l
-#	files = [f.getpathname().replace(",", ".") for f in l]
-#	for f in files:
-#		print f
+
 	print "###"
-#	filenumpos = [[] for f in files]
 
 	filenums = {}
 
 	for f in files:
 		filenums[f] = getnumbers(stripname(f.getpathname(), False))
 		print f, filenums[f]
-	
+
 	allfilenums = [fnum for f in files for fnum in filenums[f]]
 	print allfilenums
 	filenumcounter={}
@@ -464,12 +310,7 @@ def namedir(l, override=False):
 			else:
 				indexnums[fnum.strindex] = fnum.num
 
-#	print "REMOVEINDEX", removeindexes
 	toremove += removeindexes
-#	for f in files:
-#		for fnum in filenums[f]:
-#			if fnum.strindex in removeindexes:
-#				toremove.append(fnum)
 
 	for fnum in filenumcounter:
 		times = filenumcounter[fnum]
@@ -478,113 +319,26 @@ def namedir(l, override=False):
 		elif float(fnum.num) > 100:
 			toremove.append(fnum.strindex)
 
-#	for f in files:
-#		for filenumpos in filenums[f]:
-#			for otherf in files:
-#				if f != otherf:
-#					for otherfilenumpos in filenums[otherf]:
-#						if filenumpos == otherfilenumpos:
-#							strindex = filenumpos.strindex
-#							if not strindex in toremove:
-#								toremove.append(strindex)
 	for f in files:
 		filenums[f] = [fnum for fnum in filenums[f] if not fnum.strindex in toremove]
-#		print f, filenums[f]
 
 	filenumsstrindex = [fnum.strindex for f in files for fnum in filenums[f]]
 	epnumpos = None
 	if len(filenumsstrindex) != 0:
 		filenumsstrindex = Counter(filenumsstrindex)
 		commonlist = filenumsstrindex.most_common()
-#		mostcommoncount = commonlist[0][1]
-#		commoncount = []
-#		for commonepnum, count in commonlist:
-#			if count == mostcommoncount:
-#				commoncount.append(commonepnum)
-#		commoncount.sort()
 		epnumpos = commonlist[0][0]
 		print epnumpos
-
-#	for index, f in enumerate(files):
-#		numstart = None
-#		numlen = 0
-#		basename = f#os.path.basename(f)
-#		for loc in range(len(basename)):
-#			num = getnumber(basename, loc)
-#			if num != "" and num != ".":
-#				filenumpos[index].append([loc])
-
-#		for charpos, char in enumerate(os.path.basename(f)):
-#			if char.isdigit():
-#				if numstart == None:
-#					numstart = charpos
-#				numlen += 1
-#			else:
-#				if numstart != None:
-#					filenumpos[index].append([numstart])#, numlen])
-#					numstart = None
-#					numlen = 0
 
 	names = copy.copy(l)
 	eps = [None for f in l]
 
-#	numposs = []
-#	for filenums in filenumpos:
-#		numposs += filenums
-	#remove all same nums
-#	toremove = []
-#	for filenums in numposs:
-#		numpos = filenums[0]
-#		if not loc in toremove:
-#			locnum = None
-#			removeloc = False
-#			for index, f in enumerate(files):
-#				basename = f#os.path.basename(f)
-#				print basename[loc:]
-#				newlocnum = getnumber(basename, loc)
-#				if locnum == newlocnum:
-#					removeloc = True
-#				locnum = newlocnum
-#			if removeloc:
-#				toremove.append(loc)
-#				print "remove", locnum
-#	numposs = [filenums for filenums in numposs if not filenums in toremove]
-
-#	fnumstrindexes = [fnum.strindex for fnum in filenums]
-#	numpossamts = OrderedDict()
-#	for fnumstrindex in fnumstrindexes:
-#		numpossamts.append([numpos, numposs.count(numpos)])
-#		if not fnumstrindex in numpossamts:
-#			numpossamts[fnum.strindex] = fnumstrindexes.count(fnumstrindex)
-#	if numpossamts != []:
-#		epnums = max(numpossamts.keys(), key = lambda x : numpossamts[x])
-#		numpossamts = [numpos for numpos in numpossamts if numpossamts[numpos]==numpossamts[epnums]]
-#		epnums = min(numpossamts.keys(), key = lambda x : x[0][0])
-#		for epnum in epnums:
-#			allsame = True
-#			oldnumber = None
-#			for index, name in enumerate(names):
-#				changedname = files[index]
-#				print changedname
-#				number = changedname[epnum[0]:epnum[0]+2]
-#				if oldnumber != None and oldnumber == number:
-#					allsame = False
-#				oldnumber = number
-#			if allsame:
-#				epnums.remove(epnum)
-
-
-#		epnumpos = epnums[0]
-#	else:
-#		epnumpos = None
-	
 	for index, name in enumerate(names):
 		path = l[index]
 		changedname = files[index]
-		newname = path.getpathname()#stripname(path.getpathname(), False)#os.path.basename(path)
+		newname = path.getpathname()
 		if epnumpos != None:
-			numpos = epnumpos#[0]
-#				numbers = getnumbers(changedname)#changedname[epnumpos[0]:epnumpos[0]+2]#+epnumpos[1]]
+			numpos = epnumpos
 			numbers = filenums[changedname]
 			number = [num for num in numbers if num.strindex == numpos]
 			if number != []:
@@ -593,14 +347,7 @@ def namedir(l, override=False):
 					number = float(number)
 				else:
 					number = int(number)
-#				number = number.strip()
-#				number = filter(lambda x : x.isdigit(), number)
-#				if number.isdigit() and number != "":
-#					number = int(number)
-#					afternumber = changedname[epnumpos[0]:epnumpos[0]+4]
-#					if afternumber.endswith(".5"):
-#						number = number + .5
-				eps[index] = number#newname = "Episode " + number + " " + newname
+				eps[index] = number
 		names[index] = newname
 
 	numbereps = sum([ep != None for ep in eps])
@@ -614,7 +361,7 @@ def namedir(l, override=False):
 				epnumber = eps[index]
 				path.setname([name, epnumber])
 
-homefolder = os.path.expanduser("~")#os.environ['HOME']
+homefolder = os.path.expanduser("~")
 tvfolder = os.path.join(homefolder, "Videos/tv")
 kmcfolder = os.path.join(homefolder, ".kmc")
 imagesfolder = os.path.join(kmcfolder, "images")
@@ -643,9 +390,6 @@ subfolders = []
 opedcounter = 1
 othercounter = 1
 
-#class MyOpener(FancyURLopener):
-#	version = 'Mozilla/5.0 (Windows; U; Windows NT 5.1; it; rv:1.8.1.11) Gecko/20071127 Firefox/2.0.0.11'
-
 class googleimage():
 	def __init__(self, url, previewurl, size, page):
 		self.url, self.previewurl, self.size, self.page = url, previewurl, size, page
@@ -653,7 +397,6 @@ class googleimage():
 def imagesearch(searchTerm, page):
 	searchTerm = searchTerm.replace(' ','%20')
 
-#	myopener = MyOpener()
 	count= 0
 
 	images = []
@@ -679,7 +422,6 @@ def imagesearch(searchTerm, page):
 #		myopener.retrieve(myUrl['unescapedUrl'],str(count)+'.jpg')
 
 	# Sleep for one second to prevent IP blocking from Google
-#	time.sleep(1)
 
 	print len(images)
 
@@ -691,7 +433,6 @@ def findimage(loc, page=0):
 	return images
 
 def downloadimage(url, path):
-#	filepath = os.path.join(save.imagesfolder, path)#os.path.basename(loc)) + "." + images[0].rsplit(".", 1)[1]
 	print "downloading", url
 	urllib.urlretrieve(url, path)
 	print "done downloading"
@@ -753,35 +494,7 @@ def changename(basename, toremove=None, number=False, takeoutnumbers=False, dose
 	if "." in newbasename:
 		newbasenamebase, newbasenameending = newbasename.rsplit(".", 1)
 		newbasenamebase = newbasenamebase.strip()
-		"""
-		if number:
-			for ignore in ignorefiles:
-				if ignore in newbasenamebase:
-					return ""
-			if "OP" in newbasenamebase.upper() or "ED" in newbasenamebase.upper():
-				newbasenamebase = toremove + "_S00E" + str(100 + opedcounter)
-				opedcounter += 1
-			else:
-				if newbasenamebase.isdigit():
-					thenumber = int(newbasenamebase)
-					torrenteps.append(thenumber)
-					thenumber = "Episode " + str(thenumber)
-				else:
-					thenumber = re.search(r'\d+', newbasenamebase)
-					if thenumber == None:
-						return basename
-					else:
-						thenumber = thenumber.group()
-						thenumber = int(thenumber)
-						if thenumber in torrenteps:
-							thenumber = "_S00E" + str(0 + othercounter)
-							print "special: " + str(othercounter)
-							othercounter += 1
-						else:
-							torrenteps.append(thenumber)
-							thenumber = "Episode " + str(thenumber)
-				newbasenamebase = thenumber
-		"""
+
 		if newbasenameending.endswith(".part"):
 			newbasenameending = newbasenameending.replace(".part", "")
 		newbasename = newbasenamebase + "." + newbasenameending
@@ -796,74 +509,6 @@ class ShadowLabel(Label):
 
 class ShadowButton(Button):
 	tint = ListProperty([0, 0, 0, 0.1])
-
-"""	def __init__(self, *args, **kwargs):
-		Label.__init__(self, *args, **kwargs)
-
-		with self.canvas.before:
-			Color(self.tint)
-
-			Rectangle(pos = self.pos, #[int(self.center_x - self.texture_size[0] / 2.) + self.decal[0],\
-				size=self.texture_size)#int(self.center_y - self.texture_size[1] / 2.) + self.decal[1]], size=self.texture_size)
-#			x.texture = self.texture
-			Color([1,1,1,1])
-"""
-
-
-rectanglestring = """
-		Rectangle:
-			pos:
-				int(self.center_x - self.texture_size[0] / 2.) + SHIFTX,\
-				int(self.center_y - self.texture_size[1] / 2.) + SHIFTY
-			size: root.texture_size
-			texture: root.texture
-"""
-
-shadowlabelstring = """
-<ShadowLabel>:
-	canvas.before:
-		Color:
-			rgba: root.tint
-
-RECTANGLES
-		Color:
-			rgba: 1, 1, 1, 1
-"""
-
-fullrectanglestring = ""
-
-rad = 8
-circlepoints = []
-for x in range(-rad, rad+1):
-	for y in range(-rad, rad+1):
-		if (x**2 + y**2 < rad):
-			circlepoints.append([x,y])
-
-toremove = []
-for point in circlepoints:
-	x, y = point
-	if [x+1, y] in circlepoints and [x, y+1] in circlepoints and [x-1, y] in circlepoints and [x, y-1] in circlepoints:
-		toremove.append(circlepoints)
-
-for SHIFTX, SHIFTY in circlepoints:
-	if not [SHIFTX, SHIFTY] in toremove:
-		newrectanglestring = rectanglestring.replace("SHIFTX", str(SHIFTX)).replace("SHIFTY", str(SHIFTY))
-		fullrectanglestring += newrectanglestring
-
-shadowlabelstring = shadowlabelstring.replace("RECTANGLES", fullrectanglestring)
-
-if useoutlines:
-	Builder.load_string(shadowlabelstring)
-	Builder.load_string(shadowlabelstring.replace("ShadowLabel", "ShadowButton"))
-
-	Button = ShadowButton
-	Label = ShadowLabel
-
-#global Button
-
-#Button = type('Button', (ShadowLabel,), dict(Button.__dict__))
-
-
 
 class Gradient(object):
 	@staticmethod
@@ -928,24 +573,20 @@ class abutton(AnchorLayout):
 			self.rect = Rectangle(pos=self.pos, size=self.size)
 			self.rect.texture = buttonactivatedtexture
 
-#		self.button = Button(size_hint=(1,1), background_color=(0,0,0,0))
-#		self.add_widget(self.button)
-
 		self.ep = ep
 		self.app = app
 		self.watched = False
 
 		self.showfolder = ep.getparent()
 		while True:
-			if isinstance(self.showfolder, show) or self.showfolder == save.allshows:#self.showfolder.up == save.allshows:#os.path.samefile(os.path.normpath(os.path.join(self.showfolder, "..")), tvfolder):
+			if isinstance(self.showfolder, show) or self.showfolder == save.allshows:
 				break
-			self.showfolder = self.showfolder.getparent()#os.path.normpath(os.path.join(self.showfolder, ".."))
+			self.showfolder = self.showfolder.getparent()
 
 		if name == None:
 			name = ep.getname()[0]
 			if name == None:
 				name = ep.getpathname()
-#			name = os.path.basename(self.path)
 		self.name = name
 
 		self.font_size='40sp'
@@ -974,12 +615,8 @@ class abutton(AnchorLayout):
 		self.labellayout.add_widget(self.labellayout2)
 
 		self.label = Label(halign="left", size_hint=[None, None], font_name='/usr/share/pyshared/kivy/data/fonts/DejaVuSans.ttf', color=textcolor)
-#		self.label.text_size = (2000, None)
-#		self.label.size = self.label.text_size
-#		self.label.size[1] = self.label.texture_size[1]#self.label.text_size
 		self.label.bind(texture_size=self.label.setter('size'))
 		self.labellayout2.add_widget(self.label)
-#		self.label.bind(texture_size=self.updatelabelsize)
 
 		self.label.font_size = '30sp'
 
@@ -1005,13 +642,6 @@ class abutton(AnchorLayout):
 	def redraw(self, *args):
 		self.rect.pos = self.pos
 		self.rect.size = self.size
-	"""
-	def updatelabelsize(self, *args):
-		self.label.size = self.label.texture_size#max(self.label.texture_size[0], self.labellayout.size[0])
-#		pass
-
-#		self.label.size[1] = self.labellayout.size[1]h
-	"""
 
 	def setprogress(self, progress):
 		self.progress = float(progress)
@@ -1024,25 +654,16 @@ class abutton(AnchorLayout):
 		if namedisplay == "name":
 			self.label.text = self.name
 		elif namedisplay == "file":
-			self.label.text = self.ep.getpathname()#os.path.basename(self.path)
+			self.label.text = self.ep.getpathname()
 
 	def pressed(self, *args):
-		if isinstance(self.ep, episode):#os.path.isdir(self.path):
-#			dogtail.rawinput.click(0,0)
+		if isinstance(self.ep, episode):
 			self.ep.setwatched(True)
-			#save.watched[self.path] = True
 			self.check()
 			self.showfolder.setlastwatched(time.gmtime())
-			#save.lastwatched[self.showfolder] = time.gmtime()
 			self.app.select_down()
-#			optirunflag = ""
-#			if optirun:
-#				optirunflag = "optirun "
-#			if vlc:
-#				subprocess.Popen(optirunflag + "vlc --fullscreen \"" + self.path + "\"", shell=True)#"vlc \"" + self.path + "\" --play-and-exit --video-on-top --fullscreen", shell=True)
-#			else:
 			path = self.ep.path
-#			path = path.replace("`", "\\`")
+
 			if usempv:
 				new_env = os.environ.copy()
 				new_env["VDPAU_DRIVER"] = "va_gl"
@@ -1052,28 +673,22 @@ class abutton(AnchorLayout):
 					command = ["primusrun"] + command + ["--vo=opengl-hq:scale=ewa_lanczossharp"]
 				subprocess.Popen(command, env=new_env)
 			else:
-				subprocess.Popen(["smplayer", "-fullscreen", "-close-at-end", path])#, shell=True)#"vlc \"" + self.path + "\" --play-and-exit --video-on-top --fullscreen", shell=True)
+				subprocess.Popen(["smplayer", "-fullscreen", "-close-at-end", path])
 		else:
 			self.app.enterfolder(self.ep)
 
 
 	def redrawsize(self, *args):
 		pass
-#		Button.redraw(args)
-#		self.layout.size = self.size
-#		self.label.text_size = [self.labellayout.size[0]*.9, self.labellayout.size[1]*.9]#[self.size[0]*.95, None]
 
 	def redrawpos(self, *args):
 		pass
-#		self.layout.pos = self.pos
-#		self.text_size = self.size
 
 	def hover(self):
 		pass
-#		print "hover"
 
 	def updatechecked(self):
-		if self.ep.getwatched():#save.watched[self.path]:
+		if self.ep.getwatched():
 			self.check()
 		else:
 			self.uncheck()
@@ -1084,7 +699,6 @@ class abutton(AnchorLayout):
 		else:
 			self.check()
 		self.ep.setwatched(self.watched)
-		#save.watched[self.path] = self.watched
 
 	def check(self):
 		self.watched = True
@@ -1097,11 +711,7 @@ class abutton(AnchorLayout):
 	def unselect(self):
 		self.selected = False
 
-#		color = buttoncolor#self.unselected_color
 		self.rect.texture = buttonnormaltexture
-#		self.button.background_color = color
-#		self.canvas.ask_update()
-#		pass
 
 	def buttonpressed(self, *args):
 		if self.selected:
@@ -1120,25 +730,9 @@ class abutton(AnchorLayout):
 		if self.ep.getpathname().endswith(".part") or self.ep.getpathname().endswith(".!qB"):
 			has_error=True
 
-#		color = selectedcolor
 		self.rect.texture = buttonactivatedtexture
 		if has_error:
-#			color = errorcolor#self.error_color
 			self.rect.texture = buttonerrortexture
-
-#		self.button.background_color = color#self.selected_color
-#		self.canvas.ask_update()
-#		print "select"
-
-#Builder.load_string( \
-"""
-<abutton>:
-	canvas.before:
-		Rectangle:
-			size: self.size
-			pos: self.pos
-			texture: Gradient.horizontal((0, 0, 0, 1), (1, 1, 1, 1))
-"""#)
 
 class gradientButton(Button):
 	def __init__(self, *args, **kwargs):
@@ -1191,115 +785,115 @@ class clock(AnchorLayout):
 class pathobj(object):
 	def __init__(self):
 		pass
-	
+
 	def getkey(self):
 		return self
-	
+
 	def getparent(self):
 		return None
-	
+
 	def getchildren(self):
 		return None
-	
+
 	def exists(self):
 		return False
-	
+
 	def getname(self):
 		if not self.getkey() in save.names.keys():
 			save.names[self.getkey()] = self.defaultname()
 		return save.names[self.getkey()]
-		
+
 	def defaultname(self):
 		return None #override
-		
+
 	def setname(self, name):
 		save.names[self.getkey()] = name
-		
+
 	def getwatched(self):
 		if not self.getkey() in save.watched.keys():
 			save.watched[self.getkey()] = self.defaultwatched()
 		return save.watched[self.getkey()]
-		
+
 	def defaultwatched(self):
 		return False
-		
+
 	def setwatched(self, watched):
 		save.watched[self.getkey()] = watched
-		
+
 	def getcreated(self):
 		if not self.getkey() in save.created.keys():
 			save.created[self.getkey()] = self.defaultcreated()
 		return save.created[self.getkey()]
-		
+
 	def defaultcreated(self):
 		return time.time() # override
-		
+
 	def setcreated(self, created):
 		save.created[self.getkey()] = created
-		
+
 	def getimage(self):
 		if not self.getkey() in save.images.keys():
 			return self.defaultimage()
 		return save.images[self.getkey()]
-		
+
 	def defaultimage(self):
 		if not self.gettriedimage():
-			
+
 			gimages = findimage(self)
 
 			for gimage in gimages:
 				result = app.doimagedownload(self, gimage)
 				if result:
 					break
-			
+
 			self.settriedimage()
 		else:
 			return defaultimageloc
-		
+
 	def deleteimage(self):
 		if self.getkey() in save.images.keys():
 			del save.images[self.getkey()]
-	
+
 	def hasimage(self):
 		return self.getkey() in save.images.keys()
-		
+
 	def setimage(self, image):
 		save.images[self.getkey()] = image
-		
+
 	def getscrollstate(self):
 		if not self.getkey() in save.scrollstate.keys():
 			return self.defaultscrollstate()
 		return save.scrollstate[self.getkey()]
-		
+
 	def defaultscrollstate(self):
 		return [0,0,None]
-		
+
 	def setscrollstate(self, scrollstate):
 		save.scrollstate[self.getkey()] = scrollstate
-		
+
 	def getlastwatched(self):
 		if not self.getkey() in save.lastwatched.keys():
 			return self.defaultlastwatched()
 		return save.lastwatched[self.getkey()]
-		
+
 	def defaultlastwatched(self):
 		return time.gmtime(0)
-	
+
 	def setlastwatched(self, lastwatched):
 		save.lastwatched[self.getkey()] = lastwatched
-		
+
 	def getpathname(self):
 		return None # overwrite
-		
+
 	def getsize(self):
 		size = 0
 		for child in self.getchildren():
 			size += child.getsize()
 		return size
-	
+
 	def gettriedimage(self):
 		return self.getkey() in save.triedimage
-	
+
 	def settriedimage(self):
 		if not self.getkey() in save.triedimage:
 			save.triedimage.add(self.getkey())
@@ -1307,13 +901,13 @@ class pathobj(object):
 class allshowsclass(pathobj):
 	def __init__(self):
 		self.shows = []
-	
+
 	def getchildren(self):
 		allstrshoweps = []
 		for show in self.shows:
 			if isinstance(show, strshow):
 				allstrshoweps += show.getchildren()
-		
+
 		# check for new shows
 		for pathname in os.listdir(tvfolder):
 			path = os.path.join(tvfolder, pathname)
@@ -1337,7 +931,7 @@ class allshowsclass(pathobj):
 					print newshow.showstr
 					self.shows.append(newshow)
 					allstrshoweps += newshow.getchildren()
-		
+
 		# check for deleted shows
 		showstoremove = []
 		for show in self.shows:
@@ -1345,23 +939,23 @@ class allshowsclass(pathobj):
 				showstoremove.append(show)
 		for show in showstoremove:
 			self.shows.remove(show)
-		
+
 		return self.shows
-	
+
 	def getname(self):
 		return ["TV Shows", None]
 
 class show(pathobj):
 	def __init__(self):
 		pathobj.__init__(self)
-	
+
 	def getparent(self):
 		return save.allshows
-	
+
 	def delete(self):
 		with open(deletedfile, "a") as myfile:
 			myfile.write(self.getname()[0] + "\n")
-			
+
 		for child in self.getchildren():
 			child.delete()
 
@@ -1369,10 +963,10 @@ class foldershow(show):
 	def __init__(self, path):
 		show.__init__(self)
 		self.path = path
-	
+
 	def getkey(self):
 		return self.path
-		
+
 	def getchildren(self):
 		children = []
 		for pathname in os.listdir(self.path):
@@ -1382,19 +976,19 @@ class foldershow(show):
 			else:
 				children.append(episode(path, self))
 		return children
-	
+
 	def exists(self):
 		return os.path.exists(self.path)
-	
+
 	def getpathname(self):
 		return os.path.basename(self.path)
 
 	def defaultname(self):
 		return [changename(self.getpathname(), takeoutnumbers=True, dosearch=dogooglesearch, title=True), None]
-		
+
 	def defaultcreated(self):
 		return getcreatedtime(self.path)
-		
+
 	def delete(self):
 		show.delete(self)
 		os.rmdir(self.path)
@@ -1412,7 +1006,7 @@ class strshow(show):
 	def __init__(self, showstr):
 		show.__init__(self)
 		self.showstr = showstr
-	
+
 	def getchildren(self):
 		children = []
 		for pathname in os.listdir(tvfolder):
@@ -1422,16 +1016,16 @@ class strshow(show):
 				if stripname(pathname) == showstr:
 					children.append(episode(path, self))
 		return children
-		
+
 	def defaultname(self):
 		return [changename(self.getpathname(), takeoutnumbers=True, dosearch=dogooglesearch, title=True), None]
-	
+
 	def exists(self):
 		if self.getchildren() == []:
 			return False
 		else:
 			return True
-	
+
 	def getpathname(self):
 		name = self.showstr
 		if "." in name:
@@ -1441,57 +1035,28 @@ class strshow(show):
 def newstrshowfromep(ep_path):
 	epname = os.path.basename(ep_path)
 	return strshow(stripname(epname))
-	"""
-	# find episode number position in string
-	epname = os.path.basename(ep_path)
-	opens = "[<({"
-	closes = "]>)}"
-	inparen = False
-	foundnum = False
-	firstnumpos = None
-	epnumpos = None
-	for pos in range(len(epname-1), -1, -1):
-		char = epname[pos]
-		if char in closes:
-			inparen = True
-		elif char in closes:
-			inparen = False
-		elif char.isdigit:
-			if not inparen:
-				if firstnumpos == None:
-					firstnumpos = pos
-				foundnum = True
-		else:
-			if foundnum:
-				epnumpos = pos + 1
-	if epnumpos == None:
-		return strshow(epname)
-	else:
-		showstr = epname[:epnumpos] + "%EPNUM%" + epname[firstnumpos+1:]
-		return strshow(showstr)
-	"""
 
 class filesyspath(pathobj):
 	def __init__(self, path, up):
 		pathobj.__init__(self)
 		self.path = path
 		self.up = up
-	
+
 	def getkey(self):
 		return self.path
-	
+
 	def getparent(self):
 		return self.up
-		
+
 	def exists(self):
 		return os.path.exists(self.path)
-		
+
 	def getpathname(self):
 		return os.path.basename(self.path)
-	
+
 	def defaultcreated(self):
 		return getcreatedtime(self.path)
-		
+
 	def defaultname(self):
 		namedir(self.up.getchildren())
 		return save.names[self.getkey()]
@@ -1499,10 +1064,10 @@ class filesyspath(pathobj):
 class episode(filesyspath):
 	def __init__(self, path, up):
 		filesyspath.__init__(self, path, up)
-	
+
 	def getsize(self):
 		return os.path.getsize(self.path)
-		
+
 	def delete(self):
 		print "DELETING:", self.path
 		os.remove(self.path)
@@ -1510,7 +1075,7 @@ class episode(filesyspath):
 class folder(filesyspath):
 	def __init__(self, path, up):
 		filesyspath.__init__(self, path, up)
-	
+
 	def getchildren(self):
 		children = []
 		for pathname in os.listdir(self.path):
@@ -1520,10 +1085,10 @@ class folder(filesyspath):
 			else:
 				children.append(episode(path, self))
 		return children
-	
+
 	def defaultname(self):
 		return [changename(self.getpathname(), takeoutnumbers=False, dosearch=False, title=True), None]
-		
+
 	def delete(self):
 		for child in self.getchildren():
 			child.delete()
@@ -1535,17 +1100,10 @@ class KMCApp(App):
 
 		self.imagesloaders = {}
 
-#		self.selectedfolder = save.loadstate("infolder")
-
-#		save.setname(save.tvfolder, ["TV", None])
-
-#		self.baseimagepath = os.path.join("/home/yyon/Pictures/wallpapers", random.choice(os.listdir("/home/yyon/Pictures/wallpapers")))
-#
 		self.sm = ScreenManager()
 		self.defaultscreen = Screen(name="default")
 		self.sm.add_widget(self.defaultscreen)
 
-		#self.sm.switch_to(self.defaultscreen)
 		self.sm.current = "default"
 
 		fllayout = FloatLayout()
@@ -1559,32 +1117,17 @@ class KMCApp(App):
 		self.backgroundimage = Image(pos_hint={'center_x':.5, 'center_y':.5}, size_hint=[1,3], allow_stretch=True)
 		fllayout.add_widget(self.backgroundimage)
 
-#		global BACKOPACITY
-#		back = GradientWidget(colors=((0,0,0,BACKOPACITY), (0, 0, 0, BACKOPACITY)), pos_hint={'center_x':.5, 'center_y':.5}, size_hint=[1,1])
-#		fllayout.add_widget(back)
-#		BACKOPACITY=0
-
-#		self.darkener = Button(background_color=[0,0,0,0])
-#		fllayout.add_widget(self.darkener)
-
 		contentlayout = FloatLayout(pos_hint={'center_x':.5, 'center_y':.5}, size_hint=[1,1])#(.95, .95))
 		fllayout.add_widget(contentlayout)
 
 		leftsidelayout = FloatLayout(pos_hint={'center_x':.325, 'center_y':.5}, size_hint=(.65, 1))
 		contentlayout.add_widget(leftsidelayout)
-		
+
 		sidebarlayout = FloatLayout(pos_hint={'center_x':.85, 'center_y':.5}, size_hint=[.3, 1])
 		contentlayout.add_widget(sidebarlayout)
 
 		rightback = GradientWidget(colors=(backgroundinvisible, backgroundcolor), pos_hint={'center_x':.5, 'center_y':.5}, size_hint=[1,1])
 		sidebarlayout.add_widget(rightback)
-
-		"""
-		layout = GridLayout(cols=1, spacing=10, size_hint_y=None)
-		self.layout = layout
-		#Make sure the height is such that there is something to scroll.
-		layout.bind(minimum_height=layout.setter('height'))
-		"""
 
 		buttons = []
 
@@ -1602,43 +1145,14 @@ class KMCApp(App):
 		self.layoutheight = 15
 		self.layouttop = 0
 
-
-		"""
-		self.boxes = []
-
-		for i in range(15):
-			box = FloatLayout()
-			self.boxes.append(box)
-			self.layout.add_widget(box)
-		"""
-
-		"""
-		self.scroll = ScrollView(pos_hint={'center_x':.325, 'center_y':.5}, size_hint=(.65, 1))#pos_hint={'center_x':.35, 'center_y':.5}, size_hint=(.65, .9))
-		contentlayout.add_widget(self.scroll)
-		self.scroll.do_scroll_x = False
-		self.scroll.bar_margin = -5
-		self.scroll.bar_width=5
-		self.scroll.add_widget(layout)
-		"""
-
-#		self.titlelayout = FloatLayout(pos_hint={'center_x':.5, 'center_y':.975}, size_hint=(.5, .06))
-#		self.titleback = gradientButton(background_color=buttoncolor, pos_hint={'center_x':.5, 'center_y':.5},size_hint=[1,1])
-#		self.titlelayout.add_widget(self.titleback)
 		self.titlelabel = gradientButton(text="hi", pos_hint={'center_x':.5, 'center_y':1-.05}, valign="top", size_hint=(1, .1), font_name='/usr/share/pyshared/kivy/data/fonts/DejaVuSans.ttf', color=textcolor, font_size="40sp")
 		sidebarlayout.add_widget(self.titlelabel)
-#		self.titlelayout.add_widget(self.titlelabel)
-
-#		self.previewimage = AsyncImage(pos_hint={'center_x':.85, 'center_y':.2}, size_hint=[.25,1])
-#		self.previewimage.source =
-
-#		fllayout.add_widget(self.previewimage)
 
 		self.buttons = []
-#		self.up = None
+
 		self.namedisplay = "name"
 
 		self.infolder = None
-#		self.scrollstate = save.scrollstate#{}
 
 		self.showwatched = True
 
@@ -1650,26 +1164,23 @@ class KMCApp(App):
 		self._keyboard = Window.request_keyboard(self._keyboard_closed, self)
 		self._keyboard.bind(on_key_down=self._on_keyboard_down)
 
-		#self.populatebuttons(["a", "b", "c"])
 		self.enterfolder(save.allshows)
 
 		Clock.schedule_interval(self.lookfordownloadupdate, 60)
-#		Clock.schedule_once(self.on_start, 1)
-#		Clock.schedule_interval(self.refresh, 30)
 
 		optionlayout = BoxLayout(orientation="vertical", pos_hint={'center_x':.5, 'center_y':.35}, size_hint=[1,.7], spacing=self.buttonspacing)
 		sidebarlayout.add_widget(optionlayout)
-		
+
 		if showupdown:
 			updown = BoxLayout(orientation="horizontal", pos_hint={'center_x':.85, 'center_y':.5}, size_hint=[.3,1], spacing=0)
 			optionlayout.add_widget(updown)
-		
+
 		self.options = {}
-		
+
 		options = []
 		if showupdown:
 			options += [[u"\u25b3", self.select_up, updown], [u"\u25bd", self.select_down, updown]]
-		
+
 		options += [["Play", self.dobutton], ["Up", self.esc], ["Refresh", self.refresh], ["Delete", self.delete], ["Folder Rename", self.folderrename], ["Rename", self.rename],
 			["Change Image", self.imageselector], ["Toggle Watched", self.togglewatched], ["Show Full Names", self.togglenamedisplay],
 			["Sort", self.togglesort], ["Show Watched", self.toggleshowwatched]]
@@ -1685,7 +1196,6 @@ class KMCApp(App):
 			button.font_name = '/usr/share/pyshared/kivy/data/fonts/DejaVuSans.ttf'
 			button.text = text
 			button.color = textcolor
-#			button.background_color=buttoncolor#[.5, .5, .5, buttonopacity]
 			button.bind(on_press=partial(self.runcommand, command))
 
 			self.options[text] = button
@@ -1717,37 +1227,15 @@ class KMCApp(App):
 		self.localimgbutton.bind(on_press=self.localimageselector)
 		self.imgwin.add_widget(self.localimgbutton)
 
-#		imageloader = threading.Thread(target=self.loadimages)
-#		imageloader.start()
-
-#		Cache._categories['kv.loader']['timeout'] = None
-#		self.loadimages()
-
 		for show in save.allshows.getchildren():
-#			fullf = os.path.join(tvfolder, f)
-			name = show.getname()[0]#save.names[fullf][0]
+			name = show.getname()[0]
 			save.watchedset.add(name)
-		
-#		for f in save.names.keys():
-#			parentdir = os.path.dirname(f)
-#			if os.path.exists(parentdir):
-#				if os.path.samefile(parentdir, tvfolder):
-#					name = save.names[f][0]
-#					save.watchedset.add(name)
-		
-#		for f in save.watchedset:
-#			print f
-		
+
+
 		if os.path.exists(startupscript):
 			p = subprocess.Popen([startupscript])
-		
-		return self.sm#fllayout
 
-#	def on_start(self, *args):
-#		for index, button in enumerate(self.buttons):
-#			if button.path == self.selectedfolder:
-#				self.select(index, True)
-##		self.refresh()
+		return self.sm
 
 	def runcommand(self, command, *args):
 		command()
@@ -1756,81 +1244,40 @@ class KMCApp(App):
 		if tkMessageBox.askyesno("Delete", "Delete?", default="no"):
 			ep = self.buttons[self.selectedindex].ep
 			ep.delete()
-			"""
-			path = self.buttons[self.selectedindex].path
-			name = self.buttons[self.selectedindex].name
-			if send2trash != None:
-				with open(deletedfile, "a") as myfile:
-					myfile.write(name + "\n")
 
-				send2trash(path)
-			else:
-				tkMessageBox.showerror("No trash library", "install Send2Trash library (sudo pip install Send2Trash)")
-			"""
 		self.refresh()
 
 	def lookfordownloadupdate(self, *args):
-#		self.updatedownloaded()
-		"""
-		files = os.listdir(self.infolder)
-		for f in files:
-			foundbutton = False
-			for b in self.buttons:
-				bname = b.ep.getpathname()
-				if f == bname:
-					foundbutton = True
-					break
-			if foundbutton == False:
-				self.refresh()
-				break
-		"""
 		self.refresh()
 
 	def enterfolder(self, folder, up=False):
-		self.infolder = folder#os.path.normpath(folder)
-#		if self.infolder == save.:
-#			self.up = None
-#		else:
-#			self.up = os.path.normpath(os.path.join(folder, ".."))
+		self.infolder = folder
+
 		name, epnumber = self.infolder.getname()
-#		name, epnumber = save.names[self.infolder]
-#		if name == None:
-#			name = os.path.basename(self.infolder)
+
 		self.titlelabel.text = name
-#		if up == False:
-#			if self.up != []:
-#				self.up[-1][1] = self.selectedindex
-#				self.up[-1][2] = self.scroll.scroll_y
-#			self.up.append([folder, 0, 0])
+
 		self.refresh()
 		self.refreshimage()
 		self.refreshdownloadedfrominfo()
-#		if up:
-#			self.select(self.up[-1][1])
-#			self.scroll.scroll_y = self.up[-1][2]
-#			self.scroll.update_from_scroll()
 
 	def refresh(self, *args):
-#		folder = self.infolder
 		l = self.infolder.getchildren()
-#		l = os.listdir(folder)
-#		l = [os.path.join(folder, path) for path in l]
-#		l.sort()
-		
+
 		if not save.showwatched and self.infolder == save.allshows:
-			l = [child for child in l if not child.getwatched()]#save.watched[path]]
+			l = [child for child in l if not child.getwatched()]
 
 		scrollstate = self.infolder.getscrollstate()
 		if len(scrollstate) == 2:
-			selectindex, top = scrollstate#save.scrollstate[folder]
+			selectindex, top = scrollstate
 			name=None
 		else:
-			selectindex, top, name = scrollstate#save.scrollstate[folder]
+			selectindex, top, name = scrollstate
 
 		self.populatebuttons(l)
-		
+
 		self.layouttop = top
-		
+
 		for index, button in enumerate(self.buttons):
 			if button.name == name:
 				selectindex = index
@@ -1838,49 +1285,31 @@ class KMCApp(App):
 
 		self.select(selectindex)
 
-		"""
-		if folder in self.scrollstate:
-			newselect = self.scrollstate[folder][0]
-			if len(self.buttons) > newselect:
-				self.select(newselect, True, True)
-				self.scroll.scroll_y = self.scrollstate[folder][1]
-				self.scroll.update_from_scroll()
-		"""
-
 	def clearbuttons(self):
-#		for box in self.boxes:
 		self.layout.clear_widgets()
 
 	def populatebuttons(self, l):
-##		self.layout.clear_widgets()
 		self.buttons = []
-#		updir = os.path.normpath(os.path.join(self.infolder, ".."))#self.up[-1][0]
-		
-#		if self.up == None:
-#			updirname = "TV Shows"
-#		else:
-#			updir = os.path.basename(self.up)
-#			updirname = changename(updir, takeoutnumbers=True, dosearch=dogooglesearch, title=True)
 
 		allfiles = [[] for f in l]
 
 		for index, ep in enumerate(l):
-			name, epnumber = ep.getname()#save.names[path]
+			name, epnumber = ep.getname()
 			allfiles[index] = [ep, name, epnumber]
 
-		allfiles.sort(key=lambda f : f[1]) # name
-		allfiles.sort(key=lambda f : f[2]) # number
-		
+		allfiles.sort(key=lambda f : f[1])
+		allfiles.sort(key=lambda f : f[2])
+
 		if self.infolder == save.allshows:
 			if save.sort == SORT_WATCHED:
 				allfiles.sort(key=lambda f : f[0].getlastwatched(), reverse=True)
 			elif save.sort == SORT_CREATED:
-				allfiles.sort(key=lambda f : f[0].getcreated(), reverse=True)#os.path.getctime(f[0]), reverse=True)
+				allfiles.sort(key=lambda f : f[0].getcreated(), reverse=True)
 			elif save.sort == SORT_SIZE:
 				allfiles.sort(key=lambda f : f[0].getsize(), reverse=True)
-		
+
 		episodes = [f[2] for f in allfiles if f[2] != None]
-		
+
 		for path, name, epnumber in allfiles:
 			missingprevepisode = False
 			if epnumber != None:
@@ -1903,7 +1332,6 @@ class KMCApp(App):
 				b.missingprevepisode = True
 				b.unselect()
 			self.buttons.append(b)
-#			self.layout.add_widget(b)
 
 		if len(self.buttons) == 0:
 			if self.infolder == save.allshows:
@@ -1917,23 +1345,14 @@ class KMCApp(App):
 			b = abutton(notafile, self, text)
 			self.buttons.append(b)
 
-#		self.updatedownloaded()
-#		if not self.infolder in self.scrollstate:
 		self.select(0, True)
-
-#	def loadimage(self, loader):
-#		if loader.image.texture:
-#			self.backgroundimage.texture = loader.texture
-#			self.backgroundimage.canvas.ask_update()
 
 	def loadimage(self, imgpath):
 		proxyimage = Loader.image(imgpath)
 		self.imagesloaders[imgpath] = proxyimage
 
 	def loadimages(self):
-#		dirs = os.listdir(save.tvfolder)
-#		dirs = [os.path.join(save.tvfolder, d) for d in dirs]
-		dirs = [d for d in save.images.keys()]# if os.path.exists(d)]
+		dirs = [d for d in save.images.keys()]
 		for d in dirs:
 			print save.images[d]
 			imgpath = save.images[d]
@@ -1945,50 +1364,20 @@ class KMCApp(App):
 		else:
 			path = self.buttons[self.selectedindex].showfolder
 
-#		if len(self.up) == 1:
-#		if self.infolder == save.tvfolder:
-#		print "refreshing image"
+		imgpath = path.getimage()
 
-#		try:
-#			Loader.loading_image = self.backgroundimage.source
-#		except:
-#			pass
-
-#			try:
-#				self.backgroundimage.source = save.defaultimage
-#		loader = Loader.image(save.getimage(path)
-
-#		if self.up == None:
-#			imgpath = self.baseimagepath
-#		else:
-		imgpath = path.getimage()#save.images[path]
-
-#		if imgpath in self.imagesloaders and self.imagesloaders[imgpath].loaded:
-#			self.backgroundimage.texture = self.imagesloaders[imgpath].image.texture
-#		else:
-
-#		if self.imageloader != None:
-#			self.imageloader.stop()
 		self.imageloader = Loader.image(imgpath)
 		self.imageloader.bind(on_load=self.imageloaded)
 		self.imageloaded()
-#		self.backgroundimage.source = imgpath
-#			self.loadimage(imgpath)
-#		loader.bind(on_load=self.loadimage)
-#			except:
-#				save.nextimage(path)
 
 	def imageloaded(self, *args):
-		if self.imageloader.loaded:#.image.texture:
+		if self.imageloader.loaded:
 			self.backgroundimage.texture = self.imageloader.image.texture
-#		if proxyImage.image.texture:
-#			self.backgroundimage.texture = proxyImage.image.texture
 
 	def selectbutton(self, b):
 		self.select(self.buttons.index(b))
 
 	def select(self, newindex, override=False, noscroll=False):
-#		if self.selectedindex != newindex or override:
 		if newindex < 0 or newindex >= len(self.buttons):
 			return
 
@@ -2017,51 +1406,6 @@ class KMCApp(App):
 
 		self.infolder.setscrollstate([self.selectedindex, self.layouttop, self.buttons[self.selectedindex].name])
 
-		"""
-			if not noscroll:
-				totalheight = self.layout.size[1]
-
-				viewheight = self.scroll.size[1]
-
-				scrollheight = self.scroll.size[1]
-				scrollpos = 1 - self.scroll.scroll_y
-				scrolltop = (totalheight - scrollheight) * scrollpos
-				scrollbottom = scrolltop + scrollheight
-
-				bheight = selectedbutton.height
-				bpadding = (totalheight) / len(self.buttons) - selectedbutton.height + 1
-				buttonsabove = self.selectedindex
-				btop = (bheight + bpadding) * buttonsabove
-	#			print "####", selectedbutton.to_parent(*selectedbutton.pos)[1]#, self.scroll.size[1]-selectedbutton.pos[1], self.scroll.viewport_size[1]
-				btop = (viewheight - (selectedbutton.to_parent(*selectedbutton.pos)[1] + bpadding)) + scrolltop
-				bbottom = btop + bheight
-
-				if bpadding > 0:
-					newscrolly = None
-					print "dscroll", self.scroll.scroll_y
-					if totalheight - scrollheight != 0:
-						if btop < scrolltop:
-							newscrolly = 1 - btop / float(totalheight - scrollheight)
-							self.scroll.scroll_y = newscrolly
-							self.scroll.update_from_scroll()
-						elif bbottom > scrollbottom:
-							print "bottom"
-							newscrolly = 1 - (bbottom - scrollheight) / float(totalheight - scrollheight)
-							self.scroll.scroll_y = newscrolly
-							self.scroll.update_from_scroll()
-
-	#					newscrolly = 1 - float(self.selectedindex) / (len(self.buttons)-1)
-
-	#					if newscrolly != None:
-	#						anim = Animation(scroll_y=newscrolly, d=.1, transition="in_out_quad")
-	#						anim.start(self.scroll)
-
-					if self.infolder != None:
-						print "cscroll", self.scroll.scroll_y
-						self.scrollstate[self.infolder] = [self.selectedindex, self.scroll.scroll_y]
-						save.scrollstate = self.scrollstate
-			"""
-
 	def scroll(self, direction):
 		self.scrolltimer += 1
 		if self.scrolltimer >= 5:
@@ -2074,7 +1418,6 @@ class KMCApp(App):
 
 
 	def on_motion(self, window, etype, motionevent):
-#		if motionevent != []:
 		if motionevent.button == "scrollup":
 			self.scroll(direction=-1)
 		elif motionevent.button == "scrolldown":
@@ -2085,11 +1428,6 @@ class KMCApp(App):
 		for b in self.buttons:
 			if b.collide_point(x, y):
 				b.hover()
-#		if x > 5 and x < self.root.width-5:
-#			if y < 2:
-#				self.scroll(direction=-1)
-#			elif y > self.root.height-2:
-#				self.scroll(direction=1)
 
 	def _keyboard_closed(self):
 		self._keyboard.unbind(on_key_down=self._on_keyboard_down)
@@ -2098,7 +1436,7 @@ class KMCApp(App):
 	def select_down(self):
 		if self.selectedindex != len(self.buttons) - 1:
 			self.select(self.selectedindex + 1)
-	
+
 	def select_up(self):
 		if self.selectedindex != 0:
 			self.select(self.selectedindex - 1)
@@ -2112,10 +1450,8 @@ class KMCApp(App):
 			del save.names[loc.getkey()]
 		elif newname != None:
 			if newname.isdigit():
-#				save.names[loc] = [oldname[0], int(newname)]
 				loc.setname([oldname[0], int(newname)])
 			else:
-#				save.names[loc] = [newname, None]
 				loc.setname([newname, None])
 		self.refresh()
 
@@ -2126,8 +1462,7 @@ class KMCApp(App):
 		else:
 			if self.allwatched():
 				self.infolder.setwatched(True)
-				#save.watched[self.infolder] = True
-			self.enterfolder(self.infolder.getparent())#os.path.normpath(os.path.join(self.infolder, "..")), up=True)
+			self.enterfolder(self.infolder.getparent())
 
 	def dobutton(self):
 		self.buttons[self.selectedindex].pressed()
@@ -2146,18 +1481,13 @@ class KMCApp(App):
 			path = self.buttons[self.selectedindex].showfolder
 
 		if path != None:
-#			self.backgroundimage.source = defaultimageloc
 			self.pickimage(path)
 
 	def localimageselector(self, *args):
 		path = self.imageloc
 
 		filename = askopenfilename(initialdir=imagesfolder)
-#		dlg = wx.FileDialog(wxframe, "Choose a file", imagesfolder, "", "*.*", wx.OPEN)
 		if filename != None:
-#			filename = dlg.GetFilename()
-#			dirname = dlg.GetDirectory()
-#			filename = os.path.join(dirname, filename)
 			print filename
 			self.setimage(path, filename)
 			self.sm.current="default"
@@ -2174,32 +1504,16 @@ class KMCApp(App):
 		self.buttons[self.selectedindex].togglechecked()
 
 	def toggleshowwatched(self):
-#		selectedpath = self.buttons[self.selectedindex].ep
 		save.showwatched = not save.showwatched
 		self.refresh()
 
-#		selectbutton = None
-#		for index, b in enumerate(self.buttons):
-#			if b.path == selectedpath:
-#				selectbutton = index
-#				break
-#		if selectbutton == None:
-#			self.select(0)
-#		else:
-#			self.select(selectbutton)
-
 	def _on_keyboard_down(self, keyboard, keycode, text, modifiers):
 		key = keycode[1]
-#		print key
-#		print key, modifiers
 		if key == 'up':
-#			if self.selectedindex != 0:
-#				self.select(self.selectedindex - 1)
 			self.select_up()
 		elif key == 'down':
 			self.select_down()
 		elif key == "escape":
-#			curdir = self.up.pop()
 			self.esc()
 		elif key == "enter" or key == "spacebar":
 			self.dobutton()
@@ -2210,28 +1524,6 @@ class KMCApp(App):
 						if b.name.lower().startswith(key):
 							self.select(index)
 							break
-		"""
-		elif key == "o":
-			self.buttons[self.selectedindex].pressed(optirun=True)
-		elif key == "v":
-			self.buttons[self.selectedindex].pressed(vlc=True)
-		elif key == "w":
-			self.togglewatched()
-		elif key == "n":
-			self.togglenamedisplay()
-		elif key == "r":
-			if tkMessageBox.askyesno("Rename", "Rename this directory?"):
-				print "rename"
-				namedir(self.infolder, True)
-			self.refresh()
-#			pass
-		elif key == "s":
-			self.rename()
-		elif key == "i":
-			self.imageselector()
-		elif key == "h":
-			self.toggleshowwatched()
-		"""
 
 		return True
 
@@ -2271,21 +1563,10 @@ class KMCApp(App):
 			if "Name: " in text:
 				for atorrent in text.split("\n \n"):
 					name = atorrent.split("Name: ", 1)[1].split("\n", 1)[0]
-		#			print name
-		#			subfolder = os.path.join(videosfolder, name)#torrentname)
 					thebutton = None
 					if "Progress: " in atorrent:
 						progress = atorrent.split("Progress: ", 1)[1].split("%", 1)[0]
 						self.downloadedinfo[name] = progress
-						"""
-						for b in self.buttons:
-							if os.path.basename(b.path) == name:
-								self.downloadedinfo[f] = progress
-								b.setprogress(progress)
-						"""
-		#					print "found"
-		#			if thebutton == None:
-		#				continue
 
 					files = None
 					if thebutton == None:
@@ -2303,29 +1584,11 @@ class KMCApp(App):
 
 
 	def refreshdownloadedfrominfo(self):
-#		if self.downloadedinfo == {}:
-#			print "no info yet"
 		for f in self.downloadedinfo:
 			progress = self.downloadedinfo[f]
 			for b in self.buttons:
 				if os.path.basename(b.path) == f:
 					b.setprogress(progress)
-					#b.downloadlabel.text = fprogress
-
-		#			thebutton.downloadlabel.text = "found"
-
-	"""
-	def updatedownloaded(self):
-#		return
-#		command = ["deluge-console", "info -v"]
-		self.downloadedcmd = subprocess.Popen("deluge-console \"info -v\"; echo DONE", shell=True, stdout=subprocess.PIPE)
-		self.downloadout = ""
-		fcntl.fcntl(self.downloadedcmd.stdout.fileno(), fcntl.F_SETFL, os.O_NONBLOCK)
-		self.checkdownloadedout()
-#		text = p.stdout.read()
-#		retcode = p.wait()
-#		print text
-	"""
 
 	def pickimage(self, loc, page=0):
 		self.imagepage = page
@@ -2340,9 +1603,7 @@ class KMCApp(App):
 		gimages = findimage(loc, page=page)
 
 		for gimage in gimages:
-			url = gimage.previewurl#.url#previewurl
-#			url = "http://t2.gstatic.com/images?q=tbn:ANd9GcSUcpN4Qt05kh8aGW6e0qI0T98oSKutM4cbh-aREJvupUyqg5wDUbg_pjc".encode("utf-8")
-#			print url
+			url = gimage.previewurl
 
 			button = AnchorLayout()
 			layout = FloatLayout()
@@ -2370,8 +1631,6 @@ class KMCApp(App):
 
 			temp = downloadtempimage(url)
 			img.source=temp
-#			UrlRequest(url, partial(self.showimg, img=img))
-#			img.source = url#urllib.quote_plus("""http://t2.gstatic.com/images?q=tbn:ANd9GcSUcpN4Qt05kh8aGW6e0qI0T98oSKutM4cbh-aREJvupUyqg5wDUbg_pjc""")#url
 
 			button.add_widget(img)
 			self.imgwinlist.add_widget(button)
@@ -2384,7 +1643,6 @@ class KMCApp(App):
 			url = gimage.url
 			temp = downloadtempimage(url)
 			result = self.setimage(loc, temp)
-			#save.downloadimage(loc, url)
 		self.sm.current="default"
 		return result
 
@@ -2401,29 +1659,26 @@ class KMCApp(App):
 			os.remove(path)
 		else:
 			number = 1
-		
+
 		ending = "png"
 		middle = "." + str(number)
 		newimagename = tvpath.getpathname() + middle + "." + ending
 		downloadfolder = imagesfolder
 		newimagepath = os.path.join(downloadfolder, newimagename)
-		
+
 		try:
-			# temporarily set as default image
 			img = Image(source=imgpath)
 			img.texture.save(newimagepath)
 			tvpath.setimage(newimagepath)
-			#save.setimage(tvpath.getkey(), newimagepath)
 			self.loadimage(newimagepath)
-			#self.imagesloaders[newimagepath].image = img
-			
+
 			self.refreshimage()
-			
+
 			return True
 		except Exception as e:
 			print e
 			print "Could not open file"
-			
+
 			return False
 
 	def togglesort(self, toggle=True):
@@ -2445,20 +1700,7 @@ class KMCApp(App):
 		elif save.sort == SORT_SIZE:
 			button.text = "Sort: Size"
 
-#		selectedpath = self.buttons[self.selectedindex].path
-#
-#		save.sortlastwatched = not save.sortlastwatched
 		self.refresh()
-#
-#		selectbutton = None
-#		for index, b in enumerate(self.buttons):
-#			if b.path == selectedpath:
-#				selectbutton = index
-#				break
-#		if selectbutton == None:
-#			self.select(0)
-#		else:
-#			self.select(selectbutton)
 
 saveclassinst = saveclass()
 save = saveclassinst.savestatevar
