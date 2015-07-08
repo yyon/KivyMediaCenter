@@ -36,6 +36,9 @@ from kivy.uix.stacklayout import StackLayout
 from kivy.uix.boxlayout import BoxLayout
 from kivy.uix.relativelayout import RelativeLayout
 from kivy.uix.widget import Widget
+from kivy.uix.popup import Popup
+from kivy.uix.textinput import TextInput
+from kivy.uix.filechooser import FileChooserListView
 from kivy.core.window import Window
 from kivy.lang import Builder
 from kivy.base import EventLoop
@@ -58,15 +61,14 @@ import pickle
 import re
 import operator
 import copy
-import tkSimpleDialog
-import tkMessageBox
-import Tkinter
+#import tkSimpleDialog
+#import tkMessageBox
+#import Tkinter
 import sys
 import time
 import urllib2
 import urllib
 import simplejson
-import random
 import io
 import base64
 import tempfile
@@ -77,7 +79,12 @@ from UserDict import UserDict
 from functools import partial
 from collections import OrderedDict, Counter
 from urllib2 import urlopen
-from tkFileDialog import askopenfilename
+#from tkFileDialog import askopenfilename
+
+#Rename
+#delete
+#renamefolder
+#newimage
 
 def timeme(method):
 	def wrapper(*args, **kw):
@@ -90,8 +97,8 @@ def timeme(method):
 
 	return wrapper
 
-root = Tkinter.Tk()
-root.withdraw()
+#root = Tkinter.Tk()
+#root.withdraw()
 
 buttoncolor=(0,0,0,0)
 selectedcolor=(1,0,0.4,0.3)
@@ -108,6 +115,72 @@ SORT_SIZE = "Size"
 SORTING = [SORT_ALPHABETICAL, SORT_WATCHED, SORT_CREATED, SORT_SIZE]
 
 showupdown = False
+
+popuphasfocus = False
+
+def popupmessage(title, message, content=None, options=[["Dismiss", None]], arg=None, cleanup=None):
+	vbox = BoxLayout(orientation="vertical")
+	scroll = ScrollView()
+	vbox.add_widget(scroll)
+	vbox2 = BoxLayout(orientation="vertical")
+	scroll.add_widget(vbox2)
+	l = Label(text=message, size_hint_y=None)
+	vbox2.add_widget(l)
+	if content != None:
+		vbox2.add_widget(content)
+	hbox = BoxLayout(orientation="horizontal", size_hint=(1, .2))
+	vbox.add_widget(hbox)
+
+	popup = Popup(title=title,
+    	content=vbox,
+    	size_hint=(.5, .5), auto_dismiss=False)
+	for text, method in options:
+		b = Button(text=text)
+		b.bind(on_press=partial(popupmethod, popup, method, arg, cleanup))
+		hbox.add_widget(b)
+	popup.open()
+
+	global popuphasfocus
+	popuphasfocus = True
+
+def popupmethod(popup, method, arg, cleanup, button):
+	popup.dismiss()
+	global popuphasfocus
+	popuphasfocus = False
+	if method != None:
+		if arg != None:
+			method(arg())
+		else:
+			method()
+	cleanup()
+
+def popupaskstring(title, message, method, default=""):
+	content = TextInput(text=default)
+	popupmessage(title, message, content=content, options=[["OK", method], ["Cancel", None]], arg=partial(finishaskstring, content), cleanup=partial(unfocustextinput, content))
+
+def finishaskstring(content):
+	return content.text
+
+def unfocustextinput(content):
+	content.focus = False
+
+def popupaskyesno(title, message, method):
+	popupmessage(title, message, options=[["Yes", partial(method, True)], ["No", partial(method, False)]])
+
+def popupaskconfirmation(title, message, method):
+	popupmessage(title, message, options=[["Yes", method], ["No", None]])
+
+def popupaskfile(title, message, method, folder="~"):
+	filechooser = FileChooserListView(size_hint_y=1, path=folder)
+	popupmessage(title, message, content=filechooser, options=[["OK", partial(finishaskfile, method, filechooser)], ["Cancel", None]])
+
+def finishaskfile(method, filechooser):
+	selection = filechooser.selection
+	if len(selection) == 0:
+		return
+	else:
+		path = selection[0]
+		method(path)
 
 class dictwithdefault(UserDict):
 	def __init__(self, default=None):
@@ -1308,6 +1381,7 @@ class KMCApp(App):
 
 		if os.path.exists(startupscript):
 			p = subprocess.Popen([startupscript])
+			p.wait()
 
 		return self.sm
 
@@ -1315,9 +1389,12 @@ class KMCApp(App):
 		command()
 
 	def delete(self):
-		if tkMessageBox.askyesno("Delete", "Delete?", default="no"):
-			ep = self.buttons[self.selectedindex].ep
-			ep.delete()
+		popupaskconfirmation("Delete", "Delete?", method=self.finishdelete)
+#		if tkMessageBox.askyesno("Delete", "Delete?", default="no"):
+
+	def finishdelete(self):
+		ep = self.buttons[self.selectedindex].ep
+		ep.delete()
 
 		self.refresh()
 
@@ -1328,6 +1405,8 @@ class KMCApp(App):
 		self.infolder = folder
 
 		name, epnumber = self.infolder.getname()
+		if name == None:
+			name, epnumber = self.infolder.defaultname()
 
 		self.titlelabel.text = name
 
@@ -1492,10 +1571,11 @@ class KMCApp(App):
 
 
 	def on_motion(self, window, etype, motionevent):
-		if motionevent.button == "scrollup":
-			self.scroll(direction=-1)
-		elif motionevent.button == "scrolldown":
-			self.scroll(direction=1)
+		if not popuphasfocus:
+			if motionevent.button == "scrollup":
+				self.scroll(direction=-1)
+			elif motionevent.button == "scrolldown":
+				self.scroll(direction=1)
 
 	def mouse_pos(self, instance, value):
 		x, y = value
@@ -1519,7 +1599,10 @@ class KMCApp(App):
 	def rename(self):
 		loc = self.buttons[self.selectedindex].ep
 		oldname = loc.getname()
-		newname = tkSimpleDialog.askstring("Rename", loc.getpathname(), initialvalue=oldname[0], parent=root)
+		popupaskstring("Rename", loc.getpathname(), default=oldname[0], method=partial(self.finishrename, loc))
+#		newname = tkSimpleDialog.askstring("Rename", loc.getpathname(), initialvalue=oldname[0], parent=root)
+
+	def finishrename(self, loc, newname):
 		if newname == "":
 			del save.names[loc.getkey()]
 		elif newname != None:
@@ -1542,9 +1625,12 @@ class KMCApp(App):
 		self.buttons[self.selectedindex].pressed()
 
 	def folderrename(self):
-		if tkMessageBox.askyesno("Rename", "Rename this directory?"):
-			print "rename"
-			namedir(self.infolder.getchildren(), True)
+		popupaskconfirmation("Rename", "Rename this directory?", method=self.finishfolderrename)
+#		if tkMessageBox.askyesno("Rename", "Rename this directory?"):
+
+	def finishfolderrename(self):
+		print "rename"
+		namedir(self.infolder.getchildren(), True)
 		self.refresh()
 
 	def imageselector(self):
@@ -1558,9 +1644,12 @@ class KMCApp(App):
 			self.pickimage(path)
 
 	def localimageselector(self, *args):
+		popupaskfile("Image", "Select new image file", folder=imagesfolder, method=self.finishlocalimageselector)
+#		filename = askopenfilename(initialdir=imagesfolder)
+
+	def finishlocalimageselector(self, filename):
 		path = self.imageloc
 
-		filename = askopenfilename(initialdir=imagesfolder)
 		if filename != None:
 			print filename
 			self.setimage(path, filename)
@@ -1582,22 +1671,23 @@ class KMCApp(App):
 		self.refresh()
 
 	def _on_keyboard_down(self, keyboard, keycode, text, modifiers):
-		key = keycode[1]
-		if key == 'up':
-			self.select_up()
-		elif key == 'down':
-			self.select_down()
-		elif key == "escape":
-			self.esc()
-		elif key == "enter" or key == "spacebar":
-			self.dobutton()
-		else:
-			if modifiers == []:
-				if key.isalpha() and len(key) == 1:
-					for index, b in enumerate(self.buttons):
-						if b.name.lower().startswith(key):
-							self.select(index)
-							break
+		if not popuphasfocus:
+			key = keycode[1]
+			if key == 'up':
+				self.select_up()
+			elif key == 'down':
+				self.select_down()
+			elif key == "escape":
+				self.esc()
+			elif key == "enter" or key == "spacebar":
+				self.dobutton()
+			else:
+				if modifiers == []:
+					if key.isalpha() and len(key) == 1:
+						for index, b in enumerate(self.buttons):
+							if b.name.lower().startswith(key):
+								self.select(index)
+								break
 
 		return True
 
@@ -1779,6 +1869,9 @@ class KMCApp(App):
 	def showsettings(self):
 		self.sm.current = "settings"
 
+	def finishaskstring(self, text):
+		print text
+
 	def finishsettings(self, dosave, widget):
 		if dosave:
 			for labeltext, widget, savevar, getter, setter in self.settings:
@@ -1793,4 +1886,4 @@ notafile = episode(os.path.join(tvfolder, "NOTAFILE"), save.allshows)
 app = KMCApp()
 subprocess.Popen("wmctrl -r \":ACTIVE:\" -b toggle,fullscreen", shell=True)
 app.run()
-root.destroy()
+#root.destroy()
