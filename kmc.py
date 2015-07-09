@@ -124,7 +124,7 @@ def popupmessage(title, message, content=None, options=[["Dismiss", None]], arg=
 	vbox.add_widget(scroll)
 	vbox2 = BoxLayout(orientation="vertical")
 	scroll.add_widget(vbox2)
-	l = Label(text=message, size_hint_y=None)
+	l = Label(text=message, size_hint=[1,None])
 	vbox2.add_widget(l)
 	if content != None:
 		vbox2.add_widget(content)
@@ -152,7 +152,8 @@ def popupmethod(popup, method, arg, cleanup, button):
 			method(arg())
 		else:
 			method()
-	cleanup()
+	if cleanup != None:
+		cleanup()
 
 def popupaskstring(title, message, method, default=""):
 	content = TextInput(text=default)
@@ -163,6 +164,7 @@ def finishaskstring(content):
 
 def unfocustextinput(content):
 	content.focus = False
+	app.getkeyboard()
 
 def popupaskyesno(title, message, method):
 	popupmessage(title, message, options=[["Yes", partial(method, True)], ["No", partial(method, False)]])
@@ -221,8 +223,13 @@ class savedata(object):
 			"created":dictwithdefault(),
 			"allshows":allshowsclass(),
 			"triedimage":set(),
-			"usempv":True,
-			"usebumblebee":False}
+			"usempv":True
+#			"usebumblebee":False
+			}
+
+		for plugin in plugins:
+			for newvar, default in plugin.getsavevars():
+				v[newvar] = default
 
 		for var in v:
 			value = v[var]
@@ -272,13 +279,14 @@ class saveclass():
 		saveclassinst = self
 		self.savestatevar = savedata()
 
-		self.allfolders = [tvfolder, kmcfolder, imagesfolder]
+		self.allfolders = [tvfolder, kmcfolder, imagesfolder, pluginsfolder]
 		self.allfiles = [savefile]
 
 		self.makefolders()
 		self.loadall()
 
 	def dosave(self):
+		print "SAVING"
 		self.save(self.savestatevar, savefile)
 
 	def makefolders(self):
@@ -445,7 +453,8 @@ kmcfolder = os.path.join(homefolder, ".kmc")
 imagesfolder = os.path.join(kmcfolder, "images")
 savefile = os.path.join(kmcfolder, "save")
 deletedfile = os.path.join(homefolder, "Videos/deleted")
-startupscript = os.path.join(kmcfolder, "startup.sh")
+#startupscript = os.path.join(kmcfolder, "startup.sh")
+pluginsfolder = os.path.join(kmcfolder, "plugins")
 
 defaultimageloc = os.path.join(kmcfolder, "default.jpg")
 if not os.path.exists(defaultimageloc):
@@ -469,6 +478,39 @@ subfolders = []
 
 opedcounter = 1
 othercounter = 1
+
+plugins = []
+
+class plugin(object):
+	def __init__(self):
+		plugins.append(self)
+
+	def onstart(self):
+		pass
+
+	def getshows(self):
+		return []
+
+	def onclose(self):
+		pass
+
+	def onplayepisode(self, ep):
+		pass
+
+	def changecommand(self):
+		return [[], [], []]
+
+	def getsavevars(self):
+		return []
+
+	def getsettings(self):
+		return []
+
+if os.path.exists(pluginsfolder):
+	for pluginfile in os.listdir(pluginsfolder):
+		if pluginfile.endswith(".py"):
+			pluginfile = os.path.join(pluginsfolder, pluginfile)
+			execfile(pluginfile)
 
 class googleimage():
 	def __init__(self, url, previewurl, size, page):
@@ -970,6 +1012,28 @@ class pathobj(object):
 	def pressed(self):
 		app.enterfolder(self)
 
+	def getepnumber(self):
+		if self.getname()[1] != None:
+			return self.getname()[1]
+		else:
+			if self.getchildren() != None:
+				thisep = None
+				for child in self.getchildren():
+					ep = child.getepnumber()
+					if ep != None:
+						if thisep == None:
+							thisep = ep
+						elif ep > thisep:
+							if child.getwatched():
+								thisep = ep
+				return thisep
+			return None
+
+	def getshow(self):
+		if self.getparent() == None:
+			return None
+		return self.getparent().getshow()
+
 class allshowsclass(pathobj):
 	"""Root for shows"""
 
@@ -1006,6 +1070,13 @@ class allshowsclass(pathobj):
 					self.shows.append(newshow)
 					allstrshoweps += newshow.getchildren()
 
+		# check plugins' shows
+		for plugin in plugins:
+			newshows = plugin.getshows()
+			for newshow in newshows:
+				if not newshow in self.shows:
+					self.shows.append(newshow)
+
 		# check for deleted shows
 		showstoremove = []
 		for show in self.shows:
@@ -1032,6 +1103,9 @@ class show(pathobj):
 
 		for child in self.getchildren():
 			child.delete()
+
+	def getshow(self):
+		return self
 
 class foldershow(show):
 	"""Shows which are an actual folder"""
@@ -1158,13 +1232,22 @@ class episode(filesyspath):
 		app.refresh()
 		path = self.path
 
+		for plugin in plugins:
+			plugin.onplayepisode(self)
+
 		if save.usempv:
 			new_env = os.environ.copy()
-			new_env["VDPAU_DRIVER"] = "va_gl"
-			new_env["DRI_PRIME"] = "1"
+#			new_env["VDPAU_DRIVER"] = "va_gl"
+#			new_env["DRI_PRIME"] = "1"
 			command = ["mpv", path, "--fullscreen", "--input-conf="+mpvinputconf] # "--display-fps=60",
-			if save.usebumblebee:
-				command = ["primusrun"] + command + ["--vo=opengl-hq:scale=ewa_lanczossharp"]
+#			if save.usebumblebee:
+#				command = ["primusrun"] + command + ["--vo=opengl-hq:scale=ewa_lanczossharp"]
+			for plugin in plugins:
+				env, before, after = plugin.changecommand()
+				for key, value in env:
+					new_env[key] = value
+				command = before + command + after
+			print "Running:", command
 			subprocess.Popen(command, env=new_env)
 		else:
 			subprocess.Popen(["smplayer", "-fullscreen", "-close-at-end", path])
@@ -1329,7 +1412,7 @@ class KMCApp(App):
 		self.imgwin.add_widget(self.imgpage)
 
 		self.nextimgpageb = Button(text="Cancel", size_hint=[.15, .05], pos_hint={'center_x':.4, 'center_y':.1})
-		self.nextimgpageb.bind(on_press=partial(self.setimage, None, None))
+		self.nextimgpageb.bind(on_press=self.cancelimagedownload)
 		self.imgwin.add_widget(self.nextimgpageb)
 
 		self.localimgbutton = Button(text="From File", size_hint=[.15, .05], pos_hint={'center_x':.2, 'center_y':.1})
@@ -1344,7 +1427,7 @@ class KMCApp(App):
 		self.settingsscroll = ScrollView()
 		self.settingsscreen.add_widget(self.settingsscroll)
 
-		self.settingsgrid = GridLayout(cols=2, spacing=10)
+		self.settingsgrid = GridLayout(cols=2, spacing=10, size_hint=[1, None])
 		self.settingsscroll.add_widget(self.settingsgrid)
 
 		def getcheckbox (checkbox):
@@ -1355,15 +1438,19 @@ class KMCApp(App):
 		# label, widget, save variable, getter, setter
 
 		self.settings = [
-			["Use MPV", CheckBox(), "usempv", getcheckbox, setcheckbox],
-			["Use Bumblebee", CheckBox(), "usebumblebee", getcheckbox, setcheckbox],
+			["Use MPV", CheckBox(), "usempv", getcheckbox, setcheckbox]
+#			["Use Bumblebee", CheckBox(), "usebumblebee", getcheckbox, setcheckbox]
 			]
+
+		for plugin in plugins:
+			self.settings += plugin.getsettings()
 
 		for labeltext, widget, savevar, getter, setter in self.settings:
 			label = Label(text=labeltext)
 			self.settingsgrid.add_widget(label)
 			self.settingsgrid.add_widget(widget)
-			setter(widget, getattr(save, savevar))
+			if savevar != None:
+				setter(widget, getattr(save, savevar))
 
 		self.settingscancel = Button(text="Cancel")
 		self.settingscancel.bind(on_press=partial(self.finishsettings, False))
@@ -1379,11 +1466,13 @@ class KMCApp(App):
 			name = show.getname()[0]
 			save.watchedset.add(name)
 
-		if os.path.exists(startupscript):
-			p = subprocess.Popen([startupscript])
-			p.wait()
+		Clock.schedule_once(self.onstart)
 
 		return self.sm
+
+	def onstart(self, *args):
+		for plugin in plugins:
+			plugin.onstart()
 
 	def runcommand(self, command, *args):
 		command()
@@ -1802,7 +1891,11 @@ class KMCApp(App):
 	def nextimgpage(self, *args):
 		self.pickimage(self.imageloc, page=self.imagepage+1)
 
+	def cancelimagedownload(self, *args):
+		self.sm.current = "default"
+
 	def doimagedownload(self, loc, gimage, *args):
+		result = None
 		if gimage != None:
 			url = gimage.url
 			temp = downloadtempimage(url)
@@ -1875,8 +1968,13 @@ class KMCApp(App):
 	def finishsettings(self, dosave, widget):
 		if dosave:
 			for labeltext, widget, savevar, getter, setter in self.settings:
-				setattr(save, savevar, getter(widget))
+				if savevar != None:
+					setattr(save, savevar, getter(widget))
 		self.sm.current = "default"
+
+	def getkeyboard(self):
+		self._keyboard = Window.request_keyboard(self._keyboard_closed, self)
+		self._keyboard.bind(on_key_down=self._on_keyboard_down)
 
 saveclassinst = saveclass()
 save = saveclassinst.savestatevar
@@ -1886,4 +1984,7 @@ notafile = episode(os.path.join(tvfolder, "NOTAFILE"), save.allshows)
 app = KMCApp()
 subprocess.Popen("wmctrl -r \":ACTIVE:\" -b toggle,fullscreen", shell=True)
 app.run()
+
+for plugin in plugins:
+	plugin.onclose()
 #root.destroy()
