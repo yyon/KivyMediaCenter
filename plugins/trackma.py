@@ -8,6 +8,8 @@ import trackma.utils as utils
 
 from kivy.uix.togglebutton import ToggleButton
 
+from subprocess import Popen
+
 
 class trackmaplugin(plugin):
 	shows = []
@@ -173,6 +175,18 @@ class trackmaplugin(plugin):
 			self.update(show)
 
 		self.engine.unload()
+
+	def getoptions(self):
+		return [["Open MAL", self.openmal]]
+
+	def openmal(self):
+		loc = app.buttons[app.selectedindex].ep.getshow()
+		if loc.getkey() in save.malnames.keys():
+			id = save.malnames[loc.getkey()]
+			show = self.engine.get_show_info(id)
+			url = show["url"]
+			Popen(["xdg-open", url])
+
 
 class Trackma_accounts(AccountManager):
 	def _get_id(self, index):

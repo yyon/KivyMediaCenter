@@ -57,6 +57,14 @@ from kivy.properties import ListProperty
 from kivy.graphics import *
 from kivy.graphics.texture import Texture
 
+"""
+try:
+	from kivy.uix.effectwidget import EffectWidget
+except ImportError:
+	EffectWidget = None
+from kivy.uix.effectwidget import InvertEffect, HorizontalBlurEffect, VerticalBlurEffect
+"""
+
 import pickle
 import re
 import operator
@@ -114,9 +122,15 @@ SORT_CREATED = "Created"
 SORT_SIZE = "Size"
 SORTING = [SORT_ALPHABETICAL, SORT_WATCHED, SORT_CREATED, SORT_SIZE]
 
+mainfont = "DejaVuSans"#'/usr/share/pyshared/kivy/data/fonts/DejaVuSans.ttf'
+
 showupdown = False
 
 popuphasfocus = False
+
+useblur = False
+#if EffectWidget == None:
+#	useblur = False
 
 def popupmessage(title, message, content=None, options=[["Dismiss", None]], arg=None, cleanup=None):
 	vbox = BoxLayout(orientation="vertical")
@@ -162,8 +176,9 @@ def popupaskstring(title, message, method, default=""):
 def finishaskstring(content):
 	return content.text
 
-def unfocustextinput(content):
-	content.focus = False
+def unfocustextinput(*content):
+	for c in content:
+		c.focus = False
 	app.getkeyboard()
 
 def popupaskyesno(title, message, method):
@@ -223,7 +238,8 @@ class savedata(object):
 			"created":dictwithdefault(),
 			"allshows":allshowsclass(),
 			"triedimage":set(),
-			"usempv":True
+			"usempv":True,
+			"tracks":{}
 #			"usebumblebee":False
 			}
 
@@ -506,6 +522,9 @@ class plugin(object):
 	def getsettings(self):
 		return []
 
+	def getoptions(self):
+		return []
+
 if os.path.exists(pluginsfolder):
 	for pluginfile in os.listdir(pluginsfolder):
 		if pluginfile.endswith(".py"):
@@ -728,7 +747,7 @@ class abutton(AnchorLayout):
 		self.layout = BoxLayout(size_hint=(1,1))
 		self.add_widget(self.layout)
 
-		self.checklabel = Label(halign="right", size_hint=[None,1], font_name='/usr/share/pyshared/kivy/data/fonts/DejaVuSans.ttf', color=textcolor)
+		self.checklabel = Label(halign="right", size_hint=[None,1], font_name=mainfont, color=textcolor)
 		self.checklabel.text = ""
 		self.checklabel.font_size = '40sp'
 		self.layout.add_widget(self.checklabel)
@@ -740,11 +759,12 @@ class abutton(AnchorLayout):
 		self.labellayout2 = AnchorLayout(anchor_x="left", anchor_y="center")
 		self.labellayout.add_widget(self.labellayout2)
 
-		self.label = Label(halign="left", size_hint=[None, None], font_name='/usr/share/pyshared/kivy/data/fonts/DejaVuSans.ttf', color=textcolor)
+		self.label = Label(halign="left", size_hint=[None, None], font_name=mainfont, color=textcolor)
 		self.label.bind(texture_size=self.label.setter('size'))
 		self.labellayout2.add_widget(self.label)
-
+		
 		self.label.font_size = '30sp'
+		
 
 		self.labellayout.scroll_x = 0
 		self.layout.add_widget(self.labellayout)
@@ -841,6 +861,7 @@ class abutton(AnchorLayout):
 		if has_error:
 			self.rect.texture = buttonerrortexture
 
+
 class gradientButton(Button):
 	"""Buttons to the right"""
 
@@ -881,7 +902,7 @@ class gradientButton(Button):
 class clock(AnchorLayout):
 	def __init__(self, size_hint=None, pos_hint=None):
 		AnchorLayout.__init__(self, size_hint=size_hint, pos_hint=pos_hint)
-		self.button = gradientButton(text="hi", halign="center", size_hint=[1,1], font_name='/usr/share/pyshared/kivy/data/fonts/DejaVuSans.ttf', color=textcolor, font_size='70sp')
+		self.button = gradientButton(text="hi", halign="center", size_hint=[1,1], font_name=mainfont, color=textcolor, font_size='70sp')
 #		self.button.background_color = buttoncolor#[.5, .5, .5, buttonopacity]
 		self.add_widget(self.button)
 
@@ -1033,6 +1054,17 @@ class pathobj(object):
 		if self.getparent() == None:
 			return None
 		return self.getparent().getshow()
+		
+	def gettracks(self):
+		if not self.getkey() in save.tracks.keys():
+			return self.defaulttracks()
+		return save.tracks[self.getkey()]
+
+	def defaulttracks(self):
+		return [None, None]
+		
+	def settracks(self, tracks):
+		save.tracks[self.getkey()] = tracks
 
 class allshowsclass(pathobj):
 	"""Root for shows"""
@@ -1120,11 +1152,12 @@ class foldershow(show):
 	def getchildren(self):
 		children = []
 		for pathname in os.listdir(self.path):
-			path = os.path.join(self.path, pathname)
-			if os.path.isdir(path):
-				children.append(folder(path, self))
-			else:
-				children.append(episode(path, self))
+			if not pathname.startswith(".") and not pathname in ignore:
+				path = os.path.join(self.path, pathname)
+				if os.path.isdir(path):
+					children.append(folder(path, self))
+				else:
+					children.append(episode(path, self))
 		return children
 
 	def exists(self):
@@ -1234,6 +1267,9 @@ class episode(filesyspath):
 
 		for plugin in plugins:
 			plugin.onplayepisode(self)
+			
+		show = self.getshow()
+		a, s = show.gettracks()
 
 		if save.usempv:
 			new_env = os.environ.copy()
@@ -1242,6 +1278,10 @@ class episode(filesyspath):
 			command = ["mpv", path, "--fullscreen", "--input-conf="+mpvinputconf] # "--display-fps=60",
 #			if save.usebumblebee:
 #				command = ["primusrun"] + command + ["--vo=opengl-hq:scale=ewa_lanczossharp"]
+			if a != None:
+				command += ["--aid="+a]
+			if s != None:
+				command += ["--sid="+s]
 			for plugin in plugins:
 				env, before, after = plugin.changecommand()
 				for key, value in env:
@@ -1312,9 +1352,10 @@ class KMCApp(App):
 
 		sidebarlayout = FloatLayout(pos_hint={'center_x':.85, 'center_y':.5}, size_hint=[.3, 1])
 		contentlayout.add_widget(sidebarlayout)
-
-		rightback = GradientWidget(colors=(backgroundinvisible, backgroundcolor), pos_hint={'center_x':.5, 'center_y':.5}, size_hint=[1,1])
-		sidebarlayout.add_widget(rightback)
+		
+		if not useblur:
+			rightback = GradientWidget(colors=(backgroundinvisible, backgroundcolor), pos_hint={'center_x':.5, 'center_y':.5}, size_hint=[1,1])
+			sidebarlayout.add_widget(rightback)
 
 		buttons = []
 
@@ -1323,8 +1364,9 @@ class KMCApp(App):
 
 		self.buttonspacing = 5
 
-		leftback = GradientWidget(colors=(backgroundcolor, backgroundinvisible), pos_hint={'center_x':.5, 'center_y':.5}, size_hint=[1,1])
-		leftsidelayout.add_widget(leftback)
+		if not useblur:
+			leftback = GradientWidget(colors=(backgroundcolor, backgroundinvisible), pos_hint={'center_x':.5, 'center_y':.5}, size_hint=[1,1])
+			leftsidelayout.add_widget(leftback)
 
 		self.layout = BoxLayout(orientation="vertical", pos_hint={'center_x':.5, 'center_y':.5}, size_hint=(1, 1), spacing=self.buttonspacing)
 		leftsidelayout.add_widget(self.layout)
@@ -1332,7 +1374,7 @@ class KMCApp(App):
 		self.layoutheight = 15
 		self.layouttop = 0
 
-		self.titlelabel = gradientButton(text="hi", pos_hint={'center_x':.5, 'center_y':1-.05}, valign="top", size_hint=(1, .1), font_name='/usr/share/pyshared/kivy/data/fonts/DejaVuSans.ttf', color=textcolor, font_size="40sp")
+		self.titlelabel = gradientButton(text="hi", pos_hint={'center_x':.5, 'center_y':1-.05}, valign="top", size_hint=(1, .1), font_name=mainfont, color=textcolor, font_size="40sp")
 		sidebarlayout.add_widget(self.titlelabel)
 
 		self.buttons = []
@@ -1371,9 +1413,12 @@ class KMCApp(App):
 		# buttons to the right
 		options += [["Play", self.dobutton], ["Up", self.esc], ["Refresh", self.refresh],
 			["Delete", self.delete], ["Folder Rename", self.folderrename], ["Rename", self.rename],
-			["Change Image", self.imageselector], ["Settings", self.showsettings],
-			["Toggle Watched", self.togglewatched], ["Show Full Names", self.togglenamedisplay],
+			["Change Image", self.imageselector], ["Change Tracks", self.changetracks], ["Settings", self.showsettings]]
+		for plugin in plugins:
+			options += plugin.getoptions()
+		options += [["Toggle Watched", self.togglewatched], ["Show Full Names", self.togglenamedisplay],
 			["Sort", self.togglesort], ["Show Watched", self.toggleshowwatched]]
+
 
 		for opt in options:
 			parent = optionlayout
@@ -1383,7 +1428,7 @@ class KMCApp(App):
 			button = gradientButton()
 			parent.add_widget(button)
 			button.font_size='30sp'
-			button.font_name = '/usr/share/pyshared/kivy/data/fonts/DejaVuSans.ttf'
+			button.font_name = mainfont
 			button.text = text
 			button.color = textcolor
 			button.bind(on_press=partial(self.runcommand, command))
@@ -1537,6 +1582,11 @@ class KMCApp(App):
 
 		for index, ep in enumerate(l):
 			name, epnumber = ep.getname()
+#			newname = ''.join([i if ord(i) < 128 else '?' for i in name])
+#			if newname != name:
+#				print newname
+#				ep.setname([newname, None])
+#				name = newname
 			allfiles[index] = [ep, name, epnumber]
 
 		allfiles.sort(key=lambda f : f[1])
@@ -1893,6 +1943,36 @@ class KMCApp(App):
 
 	def cancelimagedownload(self, *args):
 		self.sm.current = "default"
+		
+	def changetracks(self):
+		show = self.buttons[self.selectedindex].ep.getshow()
+		at, st = show.gettracks()
+		if at == None:
+			at = ""
+		if st == None:
+			st = ""
+		at, st = str(at), str(st)
+		f = BoxLayout(orientation="vertical")
+		al = Label(text="Audio:")
+		f.add_widget(al)
+		atext = TextInput(text=at)
+		f.add_widget(atext)
+		sl = Label(text="Subtitles:")
+		f.add_widget(sl)
+		stext = TextInput(text=st)
+		f.add_widget(stext)
+		popupmessage("Change tracks", "Enter track number\nor leave blank for default", content=f, options=[["OK", partial(self.finishchangetracks, show, atext, stext)], ["Cancel", None]], cleanup=partial(unfocustextinput, atext, stext))
+		
+	def finishchangetracks(self, show, atext, stext):
+		a = atext.text
+		s = stext.text
+		if a == "":
+			a = None
+		
+		if s == "":
+			s = None
+		
+		show.settracks([a,s])
 
 	def doimagedownload(self, loc, gimage, *args):
 		result = None
