@@ -1245,6 +1245,8 @@ class filesyspath(pathobj):
 
 	def defaultname(self):
 		namedir(self.up.getchildren())
+		if not self.getkey() in save.names.keys():
+			save.names[self.getkey()] = self.getpathname()
 		return save.names[self.getkey()]
 
 class episode(filesyspath):
@@ -1993,7 +1995,8 @@ class KMCApp(App):
 				number += 1
 			else:
 				number = 1
-			os.remove(path)
+			if os.path.exists(path):
+				os.remove(path)
 		else:
 			number = 1
 
@@ -2060,6 +2063,7 @@ saveclassinst = saveclass()
 save = saveclassinst.savestatevar
 
 notafile = episode(os.path.join(tvfolder, "NOTAFILE"), save.allshows)
+save.images[notafile.getkey()] = defaultimageloc
 
 app = KMCApp()
 subprocess.Popen("wmctrl -r \":ACTIVE:\" -b toggle,fullscreen", shell=True)
