@@ -569,8 +569,7 @@ def imagesearch(searchTerm, page):
 
 	return images
 
-def findimage(loc, page=0):
-	searchterm = loc.getname()[0] + " wallpaper"#save.names[loc][0] + " wallpaper"
+def findimage(searchterm, page=0):
 	images = imagesearch(searchterm, page)
 	return images
 
@@ -970,8 +969,9 @@ class pathobj(object):
 
 	def defaultimage(self):
 		if not self.gettriedimage():
-
-			gimages = findimage(self)
+			searchterm = self.getname()[0] + " wallpaper"#save.names[loc][0] + " wallpaper"
+			
+			gimages = findimage(searchterm)
 
 			for gimage in gimages:
 				result = app.doimagedownload(self, gimage)
@@ -1077,11 +1077,27 @@ class allshowsclass(pathobj):
 		for show in self.shows:
 			if isinstance(show, strshow):
 				allstrshoweps += show.getchildren()
-
+		
+		allSnumEnum = []
+		for show in self.shows:
+			if isinstance(show, SnumEnumshow):
+				allSnumEnum.append(show.showstr)
+		
+#		self.shows = [show for show in self.shows if not isinstance(show, SnumEnumshow)]
+		
 		# check for new shows
 		for pathname in os.listdir(tvfolder):
 			path = os.path.join(tvfolder, pathname)
-			if os.path.isdir(path):
+			if "S##E##" in re.sub("\d", "#", pathname):
+				ep = getsingleep(path)
+				strip = SnumEnumstripname(os.path.basename(ep))
+				print "STRIP", strip
+				print allSnumEnum
+				if not strip in allSnumEnum:
+					print "ADDING SHOW"
+					newshow = SnumEnumshow(strip)
+					self.shows.append(newshow)
+			elif os.path.isdir(path):
 				foundpath = False
 				for show in self.shows:
 					if isinstance(show, foldershow):
@@ -1203,6 +1219,99 @@ class strshow(show):
 					children.append(episode(path, self))
 		return children
 
+	def defaultname(self):
+		return [changename(self.getpathname(), takeoutnumbers=True, dosearch=dogooglesearch, title=True), None]
+
+	def exists(self):
+		if self.getchildren() == []:
+			return False
+		else:
+			return True
+
+	def getpathname(self):
+		name = self.showstr
+		if "." in name:
+			name = name.rsplit(".", 1)[0]
+		return name
+
+class SnumEnumseason(pathobj):
+	def __init__(self, show, season):
+		pathobj.__init__(self)
+		self.show, self.season = show, season
+
+	def getparent(self):
+		return self.show
+
+	def delete(self):
+		for child in self.getchildren():
+			child.delete()
+			
+	def getpathname(self):
+		return "Season " + str(self.season)
+		
+	def defaultname(self):
+		return [self.getpathname(), None]
+	
+	def getchildren(self):
+		return self.episodes
+	
+	def exists(self):
+		if self.getchildren() == []:
+			return False
+		else:
+			return True
+
+def getsingleep(path):
+	if os.path.isdir(path):
+		newpaths = os.listdir(path)
+		newpaths = [os.path.join(path, newpath) for newpath in newpaths]
+		path = max(newpaths, key = lambda newpath : os.path.getsize(newpath))
+		return path
+	else:
+		return path
+
+def SnumEnumstripname(name):
+	poundbasename = re.sub("\d", "#", name)
+	pos = poundbasename.find("S##E##")
+	
+	name = name[:pos]
+	
+	s = stripname(name)
+	
+	return s
+
+class SnumEnumshow(show):
+	"""S##E## format"""
+	
+	def __init__(self, showstr):
+		show.__init__(self)
+		self.showstr = showstr
+	
+	def getchildren(self):
+		children = []
+		for pathname in os.listdir(tvfolder):
+#			if "S##E##" in re.sub("\d", "#", pathname):
+			if SnumEnumstripname(pathname) == self.showstr:
+				path = os.path.join(tvfolder, pathname)
+				path = getsingleep(path)
+				basename = os.path.basename(path)
+				poundbasename = re.sub("\d", "#", basename)
+				pos = poundbasename.find("S##E##")
+				SnumEnum = basename[pos:pos+6]
+				S, E = int(SnumEnum[1:3]), int(SnumEnum[4:7])
+				children.append([S, E, path])
+		
+		seasons = set([S for S, E, path in children])
+		actualseasons = []
+		for S in seasons:
+			season = SnumEnumseason(self, S)
+			children = [episode(path, season) for S_, E, path in children if S == S_]
+			season.episodes = children
+			actualseasons.append(season)
+		actualseasons.sort(key=lambda s : s.season)
+		return actualseasons
+			
+		
 	def defaultname(self):
 		return [changename(self.getpathname(), takeoutnumbers=True, dosearch=dogooglesearch, title=True), None]
 
@@ -1782,7 +1891,9 @@ class KMCApp(App):
 			path = self.buttons[self.selectedindex].showfolder
 
 		if path != None:
-			self.pickimage(path)
+			self.imageloc = path
+			searchterm = path.getname()[0] + " wallpaper"#save.names[loc][0] + " wallpaper"
+			self.pickimage(path, searchterm)
 
 	def localimageselector(self, *args):
 		popupaskfile("Image", "Select new image file", folder=imagesfolder, method=self.finishlocalimageselector)
@@ -1895,8 +2006,9 @@ class KMCApp(App):
 				if os.path.basename(b.path) == f:
 					b.setprogress(progress)
 
-	def pickimage(self, loc, page=0):
+	def pickimage(self, loc, searchterm, page=0):
 		self.imagepage = page
+		self.imagesearchterm = searchterm
 		self.imageloc = loc
 
 		self.imgpage.text = "Page: " + str(self.imagepage+1)
@@ -1905,7 +2017,7 @@ class KMCApp(App):
 
 		self.imgwinlist.clear_widgets()
 
-		gimages = findimage(loc, page=page)
+		gimages = findimage(searchterm, page=page)
 
 		for gimage in gimages:
 			url = gimage.previewurl
@@ -1941,7 +2053,7 @@ class KMCApp(App):
 			self.imgwinlist.add_widget(button)
 
 	def nextimgpage(self, *args):
-		self.pickimage(self.imageloc, page=self.imagepage+1)
+		self.pickimage(self.imageloc, self.imagesearchterm, page=self.imagepage+1)
 
 	def cancelimagedownload(self, *args):
 		self.sm.current = "default"

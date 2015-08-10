@@ -10,6 +10,29 @@ from kivy.uix.togglebutton import ToggleButton
 
 from subprocess import Popen
 
+class textsaver(object):
+	vartext = ""
+
+	def __init__(self, title, text):
+		self.title = title
+		self.text = text
+
+	def getbutton(self):
+		b = Button(text="Click to change")
+		b.bind(on_press=self.onbutton)
+		return b
+
+	def onbutton(self, *args):
+		popupaskstring(self.title, self.text, method=self.onpopup, default=self.vartext)
+
+	def onpopup(self, newtext):
+		self.vartext = newtext
+
+	def set(self, button, newtext):
+		self.vartext = newtext
+
+	def get(self, button):
+		return self.vartext
 
 class trackmaplugin(plugin):
 	shows = []
@@ -134,7 +157,7 @@ class trackmaplugin(plugin):
 		self.nextshow()
 
 	def getsavevars(self):
-		return [["malnames", {}]]
+		return [["malnames", {}], ["browsercommand", "xdg-open %U"]]
 
 	def messagehandler(self, classname, msgtype, msg):
 		try:
@@ -185,7 +208,13 @@ class trackmaplugin(plugin):
 			id = save.malnames[loc.getkey()]
 			show = self.engine.get_show_info(id)
 			url = show["url"]
-			Popen(["xdg-open", url])
+			cmd = save.browsercommand.replace("%U", url)
+			print cmd
+			Popen(cmd, shell=True)#["xdg-open", url], shell=True)
+
+	def getsettings(self):
+		ts = textsaver("MAL Browser", "Browser Command (%U is url):")
+		return [["MAL Browser Command", ts.getbutton(), "browsercommand", ts.get, ts.set]]
 
 
 class Trackma_accounts(AccountManager):
