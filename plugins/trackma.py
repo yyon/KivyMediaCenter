@@ -7,6 +7,9 @@ import trackma.messenger as messenger
 import trackma.utils as utils
 
 from kivy.uix.togglebutton import ToggleButton
+from kivy.uix.dropdown import DropDown
+from kivy.uix.spinner import Spinner
+
 
 from subprocess import Popen
 
@@ -108,13 +111,18 @@ class trackmaplugin(plugin):
 				showlist.add_widget(l)
 				return
 
+		self.spinner = Spinner(text = entries[0]["title"], values = [e["title"] for e in entries])
+		showlist.add_widget(self.spinner)
 		for i, entry in enumerate(entries):
-			b = ToggleButton(text=entry["title"], group="showlist")
-			self.buttons[b] = entry
+			self.buttons[entry["title"]] = entry
+		"""
+			b = ToggleButton(text=entry["title"], group="showlist", size_hint=[None, 1], height=40)
 			if i == 0:
 				b.state = "down"
 			showlist.add_widget(b)
 #			print "%d: (%s) %s" % (i, entry['type'], entry['title'])
+		"""
+		
 
 	def findshow(self, show):
 		name = show.getname()[0]
@@ -134,17 +142,23 @@ class trackmaplugin(plugin):
 			textbox.bind(on_text_validate=partial(self.updateshowlist, showlist))
 			self.updateshowlist(showlist, textbox)
 
-			popupmessage("Select show", "Select show for\n" + name + "\n" + show.getpathname(), content=vbox, options=[["OK", partial(self.finishpopup, show)], ["Cancel", None]], cleanup=partial(unfocustextinput, textbox))
+			popupmessage("Select show", "Select show for\n" + name + "\n" + show.getpathname(), content=vbox, options=[["OK", partial(self.finishpopup, show, True)], ["Don't rename", partial(self.finishpopup, show, False)], ["Cancel", None]], cleanup=partial(unfocustextinput, textbox))
 
-	def finishpopup(self, show):
+	def finishpopup(self, show, rename=True):
 		entry = None
-		for b in self.buttons:
-			if b.state == "down":
-				entry = self.buttons[b]
-				break
+		selection = self.spinner.text
+		if selection in self.buttons:
+			entry = self.buttons[selection]
+#		for b in self.buttons:
+#			if b.state == "down":
+#				entry = self.buttons[b]
+#				break
 
 		if entry != None:
+			print "Setting show to", selection, entry["id"]
 			self.setshow(show, entry)
+			show.setname([selection, show.getname()[1]])
+			app.refresh()
 
 	def setshow(self, show, entry):
 		try:

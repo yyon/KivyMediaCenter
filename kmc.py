@@ -87,6 +87,9 @@ from UserDict import UserDict
 from functools import partial
 from collections import OrderedDict, Counter
 from urllib2 import urlopen
+from bs4 import BeautifulSoup
+import urllib2
+import requests
 #from tkFileDialog import askopenfilename
 
 #Rename
@@ -482,9 +485,9 @@ checkmark = u"\u2713"
 
 dogooglesearch = False
 whitespaces = ["_"]
-removestuff = ["DVD", "Ep", "Episodes", "+ OVA", "OVA", ".!qB", ".part"]
+removestuff = ["DVD", "Ep", "Episodes", "+ OVA", "OVA", ".!qB", ".part", "Batch"]
 removestuffregex = ["[\[\(][^\]^\)]*[\]\)]", "v[0-9]"]
-numberregex = "[0-9]+\s*[0-9]+"
+numberregex = "[0-9]+(\s*|[.])[0-9]+" # "[0-9]+\s*[0-9]+"
 ignorefiles = ["/"]
 stripchars = [" ", "-"]
 
@@ -550,7 +553,10 @@ def imagesearch(searchTerm, page):
 
 	# Get results using JSON
 	results = simplejson.load(response)
+	print "RESULTS:", results
 	data = results['responseData']
+	if data == None:
+		return
 	dataInfo = data['results']
 
 	# Iterate for each result and get unescaped url
@@ -761,9 +767,9 @@ class abutton(AnchorLayout):
 		self.label = Label(halign="left", size_hint=[None, None], font_name=mainfont, color=textcolor)
 		self.label.bind(texture_size=self.label.setter('size'))
 		self.labellayout2.add_widget(self.label)
-		
+
 		self.label.font_size = '30sp'
-		
+
 
 		self.labellayout.scroll_x = 0
 		self.layout.add_widget(self.labellayout)
@@ -970,11 +976,16 @@ class pathobj(object):
 	def defaultimage(self):
 		if not self.gettriedimage():
 			searchterm = self.getname()[0] + " wallpaper"#save.names[loc][0] + " wallpaper"
-			
-			gimages = findimage(searchterm)
 
+			gimages = findimage(searchterm)
+			if gimages == None:
+				return defaultimageloc
+			
 			for gimage in gimages:
-				result = app.doimagedownload(self, gimage)
+				try:
+					result = app.doimagedownload(self, gimage)
+				except:
+					pass
 				if result:
 					break
 
@@ -1054,7 +1065,7 @@ class pathobj(object):
 		if self.getparent() == None:
 			return None
 		return self.getparent().getshow()
-		
+
 	def gettracks(self):
 		if not self.getkey() in save.tracks.keys():
 			return self.defaulttracks()
@@ -1062,7 +1073,7 @@ class pathobj(object):
 
 	def defaulttracks(self):
 		return [None, None]
-		
+
 	def settracks(self, tracks):
 		save.tracks[self.getkey()] = tracks
 
@@ -1077,14 +1088,14 @@ class allshowsclass(pathobj):
 		for show in self.shows:
 			if isinstance(show, strshow):
 				allstrshoweps += show.getchildren()
-		
+
 		allSnumEnum = []
 		for show in self.shows:
 			if isinstance(show, SnumEnumshow):
 				allSnumEnum.append(show.showstr)
-		
+
 #		self.shows = [show for show in self.shows if not isinstance(show, SnumEnumshow)]
-		
+
 		# check for new shows
 		for pathname in os.listdir(tvfolder):
 			path = os.path.join(tvfolder, pathname)
@@ -1147,7 +1158,8 @@ class show(pathobj):
 
 	def delete(self):
 		with open(deletedfile, "a") as myfile:
-			myfile.write(self.getname()[0] + "\n")
+			print self.getname()[0].encode("utf-8") + "\n"
+			myfile.write(self.getname()[0].encode("utf-8") + "\n")
 
 		for child in self.getchildren():
 			child.delete()
@@ -1190,7 +1202,8 @@ class foldershow(show):
 
 	def delete(self):
 		show.delete(self)
-		os.rmdir(self.path)
+#		os.rmdir(self.path)
+		shutil.rmtree(self.path)
 
 def stripname(name, stripnums = True):
 	"""Episode name -> string which is the same for all episodes in the same show"""
@@ -1245,16 +1258,16 @@ class SnumEnumseason(pathobj):
 	def delete(self):
 		for child in self.getchildren():
 			child.delete()
-			
+
 	def getpathname(self):
 		return "Season " + str(self.season)
-		
+
 	def defaultname(self):
 		return [self.getpathname(), None]
-	
+
 	def getchildren(self):
 		return self.episodes
-	
+
 	def exists(self):
 		if self.getchildren() == []:
 			return False
@@ -1273,20 +1286,20 @@ def getsingleep(path):
 def SnumEnumstripname(name):
 	poundbasename = re.sub("\d", "#", name)
 	pos = poundbasename.find("S##E##")
-	
+
 	name = name[:pos]
-	
+
 	s = stripname(name)
-	
+
 	return s
 
 class SnumEnumshow(show):
 	"""S##E## format"""
-	
+
 	def __init__(self, showstr):
 		show.__init__(self)
 		self.showstr = showstr
-	
+
 	def getchildren(self):
 		children = []
 		for pathname in os.listdir(tvfolder):
@@ -1300,18 +1313,23 @@ class SnumEnumshow(show):
 				SnumEnum = basename[pos:pos+6]
 				S, E = int(SnumEnum[1:3]), int(SnumEnum[4:7])
 				children.append([S, E, path])
-		
+
 		seasons = set([S for S, E, path in children])
 		actualseasons = []
 		for S in seasons:
 			season = SnumEnumseason(self, S)
-			children = [episode(path, season) for S_, E, path in children if S == S_]
-			season.episodes = children
+			eps = []
+			for S_, E, path in children:
+				if S == S_:
+					ep = episode(path, season)
+					ep.setname([os.path.basename(path), E])
+
+			season.episodes = eps
 			actualseasons.append(season)
 		actualseasons.sort(key=lambda s : s.season)
 		return actualseasons
-			
-		
+
+
 	def defaultname(self):
 		return [changename(self.getpathname(), takeoutnumbers=True, dosearch=dogooglesearch, title=True), None]
 
@@ -1378,12 +1396,12 @@ class episode(filesyspath):
 
 		for plugin in plugins:
 			plugin.onplayepisode(self)
-			
+
 		show = self.getshow()
 		a, s = show.gettracks()
-
+		
 		if save.usempv:
-			new_env = os.environ.copy()
+#			new_env = os.environ.copy()
 #			new_env["VDPAU_DRIVER"] = "va_gl"
 #			new_env["DRI_PRIME"] = "1"
 			command = ["mpv", path, "--fullscreen", "--input-conf="+mpvinputconf] # "--display-fps=60",
@@ -1395,11 +1413,11 @@ class episode(filesyspath):
 				command += ["--sid="+s]
 			for plugin in plugins:
 				env, before, after = plugin.changecommand()
-				for key, value in env:
-					new_env[key] = value
+#				for key, value in env:
+#					new_env[key] = value
 				command = before + command + after
 			print "Running:", command
-			subprocess.Popen(command, env=new_env)
+			subprocess.Popen(command)#,# env=new_env)
 		else:
 			subprocess.Popen(["smplayer", "-fullscreen", "-close-at-end", path])
 
@@ -1463,7 +1481,7 @@ class KMCApp(App):
 
 		sidebarlayout = FloatLayout(pos_hint={'center_x':.85, 'center_y':.5}, size_hint=[.3, 1])
 		contentlayout.add_widget(sidebarlayout)
-		
+
 		if not useblur:
 			rightback = GradientWidget(colors=(backgroundinvisible, backgroundcolor), pos_hint={'center_x':.5, 'center_y':.5}, size_hint=[1,1])
 			sidebarlayout.add_widget(rightback)
@@ -1656,6 +1674,7 @@ class KMCApp(App):
 		self.titlelabel.text = name
 
 		self.refresh()
+		print "In folder", self.infolder.getname()
 		self.refreshimage()
 		self.refreshdownloadedfrominfo()
 
@@ -1766,6 +1785,9 @@ class KMCApp(App):
 			path = self.buttons[self.selectedindex].ep
 		else:
 			path = self.buttons[self.selectedindex].showfolder
+
+		if path == save.allshows:
+			return
 
 		imgpath = path.getimage()
 
@@ -1889,6 +1911,9 @@ class KMCApp(App):
 			path = self.buttons[self.selectedindex].ep
 		else:
 			path = self.buttons[self.selectedindex].showfolder
+		if path == save.allshows:
+			return
+
 
 		if path != None:
 			self.imageloc = path
@@ -2057,7 +2082,7 @@ class KMCApp(App):
 
 	def cancelimagedownload(self, *args):
 		self.sm.current = "default"
-		
+
 	def changetracks(self):
 		show = self.buttons[self.selectedindex].ep.getshow()
 		at, st = show.gettracks()
@@ -2076,16 +2101,16 @@ class KMCApp(App):
 		stext = TextInput(text=st)
 		f.add_widget(stext)
 		popupmessage("Change tracks", "Enter track number\nor leave blank for default", content=f, options=[["OK", partial(self.finishchangetracks, show, atext, stext)], ["Cancel", None]], cleanup=partial(unfocustextinput, atext, stext))
-		
+
 	def finishchangetracks(self, show, atext, stext):
 		a = atext.text
 		s = stext.text
 		if a == "":
 			a = None
-		
+
 		if s == "":
 			s = None
-		
+
 		show.settracks([a,s])
 
 	def doimagedownload(self, loc, gimage, *args):
@@ -2178,7 +2203,14 @@ notafile = episode(os.path.join(tvfolder, "NOTAFILE"), save.allshows)
 save.images[notafile.getkey()] = defaultimageloc
 
 app = KMCApp()
+
+#""" # maximize
+from kivy.core.window import Window
+Window.maximize()
+""" # fullscreen
 subprocess.Popen("wmctrl -r \":ACTIVE:\" -b toggle,fullscreen", shell=True)
+#"""
+
 app.run()
 
 for plugin in plugins:
