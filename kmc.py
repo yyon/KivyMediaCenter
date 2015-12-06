@@ -539,33 +539,43 @@ class googleimage():
 		self.url, self.previewurl, self.size, self.page = url, previewurl, size, page
 
 def imagesearch(searchTerm, page):
-	"""Searches google images"""
-	searchTerm = searchTerm.replace(' ','%20')
-
 	count= 0
 
 	images = []
 
 	# Notice that the start changes for each iteration in order to request a new set of images for each loop
-	url = ('https://ajax.googleapis.com/ajax/services/search/images?' + 'v=1.0&q='+searchTerm+'&start='+str(page*4)+'&userip=MyIP' + "&imgsz=huge")
-	request = urllib2.Request(url, None, {'Referer': 'testing'})
-	response = urllib2.urlopen(request)
-
+#	url = ('https://ajax.googleapis.com/ajax/services/search/images?' + 'v=1.0&q='+searchTerm+'&start='+str(page*4)+'&userip=MyIP' + "&imgsz=huge")
+#	url = "https://www.googleapis.com/customsearch/v1"
+#	request = urllib2.Request(url, None, {'Referer': 'testing'})
+#	response = urllib2.urlopen(request)
+	url = "https://www.googleapis.com/customsearch/v1"
+	searchTerm = re.sub(r"[^A-z0-9\ ]", "", searchTerm)
+	print "search term", searchTerm
+	params = {"q":searchTerm, "start":(page)*10+1, "searchType":"image", "key":"AIzaSyDYX1opGR7gu_94QjIp6RFUWkEt_6vrO7Y", "cx":"000234580847714625450:6vmskbjnihy"} #"imgSize":"huge", 
+	request = requests.get(url, params=params)
+	print "REQUEST", request
+	print request.url
+	
 	# Get results using JSON
-	results = simplejson.load(response)
-	print "RESULTS:", results
-	data = results['responseData']
-	if data == None:
+#	results = simplejson.load(response)
+	
+	results = request.json()
+	
+	if not "items" in results:
 		return
-	dataInfo = data['results']
-
+	data = results['items']
+	
+	print "DATA", data
+	
 	# Iterate for each result and get unescaped url
-	for myUrl in dataInfo:
+	for myUrl in data:
 		count = count + 1
-		previewurl = myUrl['tbUrl'].replace("\u003d", "=")
+#		previewurl = myUrl['tbUrl'].replace("\u003d", "=")
+		previewurl = myUrl['image']['thumbnailLink']
 #		previewimages.append(previewurl)
-		result = myUrl['unescapedUrl']
-		size = [int(myUrl['width']), int(myUrl['height'])]
+#		result = myUrl['unescapedUrl']
+		result = myUrl['link']#['image']['contextLink']
+		size = [int(myUrl['image']['width']), int(myUrl['image']['height'])]
 		images.append(googleimage(result, previewurl, size, page))
 #		myopener.retrieve(myUrl['unescapedUrl'],str(count)+'.jpg')
 
@@ -581,7 +591,10 @@ def findimage(searchterm, page=0):
 
 def downloadimage(url, path):
 	print "downloading", url
-	urllib.urlretrieve(url, path)
+#	urllib.urlretrieve(url, path)
+	f = open(path,'wb')
+	f.write(requests.get(url).content)
+	f.close()
 	print "done downloading"
 
 def stringbetween(string, s, e):
