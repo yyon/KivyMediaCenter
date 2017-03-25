@@ -95,7 +95,9 @@ class trackmaplugin(plugin):
 			if str(e) == "No results.":
 				return []
 			else:
-				raise e
+				print("Trackma error")
+				return []
+				#raise e
 
 	def updateshowlist(self, showlist, textbox):
 		self.buttons = {}
@@ -122,7 +124,7 @@ class trackmaplugin(plugin):
 			showlist.add_widget(b)
 #			print "%d: (%s) %s" % (i, entry['type'], entry['title'])
 		"""
-		
+
 
 	def findshow(self, show):
 		name = show.getname()[0]

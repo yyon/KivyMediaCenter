@@ -492,6 +492,7 @@ ignorefiles = ["/"]
 stripchars = [" ", "-"]
 
 ignore = ["xbmc", "lost+found"]
+ignorepartial = [".srt"]
 
 subfolders = []
 
@@ -551,22 +552,25 @@ def imagesearch(searchTerm, page):
 	url = "https://www.googleapis.com/customsearch/v1"
 	searchTerm = re.sub(r"[^A-z0-9\ ]", "", searchTerm)
 	print "search term", searchTerm
-	params = {"q":searchTerm, "start":(page)*10+1, "searchType":"image", "key":"AIzaSyDYX1opGR7gu_94QjIp6RFUWkEt_6vrO7Y", "cx":"000234580847714625450:6vmskbjnihy"} #"imgSize":"huge", 
-	request = requests.get(url, params=params)
+	params = {"q":searchTerm, "start":(page)*10+1, "searchType":"image", "key":"AIzaSyDYX1opGR7gu_94QjIp6RFUWkEt_6vrO7Y", "cx":"000234580847714625450:6vmskbjnihy"} #"imgSize":"huge",
+	try:
+		request = requests.get(url, params=params)
+	except requests.exceptions.ConnectionError:
+		return
 	print "REQUEST", request
 	print request.url
-	
+
 	# Get results using JSON
 #	results = simplejson.load(response)
-	
+
 	results = request.json()
-	
+
 	if not "items" in results:
 		return
 	data = results['items']
-	
+
 	print "DATA", data
-	
+
 	# Iterate for each result and get unescaped url
 	for myUrl in data:
 		count = count + 1
@@ -993,12 +997,12 @@ class pathobj(object):
 			gimages = findimage(searchterm)
 			if gimages == None:
 				return defaultimageloc
-			
+
 			for gimage in gimages:
 				try:
 					result = app.doimagedownload(self, gimage)
 				except:
-					pass
+					continue
 				if result:
 					break
 
@@ -1062,15 +1066,18 @@ class pathobj(object):
 			return self.getname()[1]
 		else:
 			if self.getchildren() != None:
-				thisep = None
-				for child in self.getchildren():
-					ep = child.getepnumber()
-					if ep != None:
-						if thisep == None:
-							thisep = ep
-						elif ep > thisep:
-							if child.getwatched():
-								thisep = ep
+				childeps = [child.getepnumber() for child in self.getchildren() if child.getwatched()]
+				if len(childeps) > 0:
+					return max(childeps)
+#				thisep = None
+#				for child in self.getchildren():
+#					ep = child.getepnumber()
+#					if ep != None:
+#						if thisep == None:
+#							thisep = ep
+#						elif ep > thisep:
+#							if child.getwatched():
+#								thisep = ep
 				return thisep
 			return None
 
@@ -1193,7 +1200,7 @@ class foldershow(show):
 	def getchildren(self):
 		children = []
 		for pathname in os.listdir(self.path):
-			if not pathname.startswith(".") and not pathname in ignore:
+			if not pathname.startswith(".") and not pathname in ignore and not any([x in pathname for x in ignorepartial]):
 				path = os.path.join(self.path, pathname)
 				if os.path.isdir(path):
 					children.append(folder(path, self))
@@ -1412,7 +1419,7 @@ class episode(filesyspath):
 
 		show = self.getshow()
 		a, s = show.gettracks()
-		
+
 		if save.usempv:
 #			new_env = os.environ.copy()
 #			new_env["VDPAU_DRIVER"] = "va_gl"
@@ -1534,6 +1541,7 @@ class KMCApp(App):
 		self.scrolltimer = 0
 		self._keyboard = Window.request_keyboard(self._keyboard_closed, self)
 		self._keyboard.bind(on_key_down=self._on_keyboard_down)
+		self._keyboard.bind(on_key_up=self._on_keyboard_up)
 
 		self.enterfolder(save.allshows)
 
@@ -1960,27 +1968,6 @@ class KMCApp(App):
 		save.showwatched = not save.showwatched
 		self.refresh()
 
-	def _on_keyboard_down(self, keyboard, keycode, text, modifiers):
-		if not popuphasfocus:
-			key = keycode[1]
-			if key == 'up':
-				self.select_up()
-			elif key == 'down':
-				self.select_down()
-			elif key == "escape":
-				self.esc()
-			elif key == "enter" or key == "spacebar":
-				self.dobutton()
-			else:
-				if modifiers == []:
-					if key.isalpha() and len(key) == 1:
-						for index, b in enumerate(self.buttons):
-							if b.name.lower().startswith(key):
-								self.select(index)
-								break
-
-		return True
-
 	def allwatched(self):
 		allwatched = False
 		for b in self.buttons:
@@ -2152,7 +2139,12 @@ class KMCApp(App):
 
 		ending = "png"
 		middle = "." + str(number)
-		newimagename = tvpath.getpathname() + middle + "." + ending
+		pathname = tvpath.getpathname()
+		try:
+			pathname = re.sub(r'[^\x00-\x7F]+',' ', pathname)
+		except Exception as e:
+			pass
+		newimagename = pathname + middle + "." + ending
 		downloadfolder = imagesfolder
 		newimagepath = os.path.join(downloadfolder, newimagename)
 
@@ -2166,6 +2158,9 @@ class KMCApp(App):
 
 			return True
 		except Exception as e:
+			exc_type, exc_obj, exc_tb = sys.exc_info()
+			fname = os.path.split(exc_tb.tb_frame.f_code.co_filename)[1]
+			print(exc_type, fname, exc_tb.tb_lineno)
 			print e
 			print "Could not open file"
 
@@ -2205,9 +2200,40 @@ class KMCApp(App):
 					setattr(save, savevar, getter(widget))
 		self.sm.current = "default"
 
+	def _on_keyboard_down(self, keyboard, keycode, text, modifiers):
+		if not popuphasfocus:
+			key = keycode[1]
+			if key == 'up':
+				self.select_up()
+			elif key == 'down':
+				self.select_down()
+
+		return True
+
+	def _on_keyboard_up(self, keyboard, keycode):#, keyboard, keycode, text, modifiers):
+		if not popuphasfocus:
+			key = keycode[1]
+			if key == "escape":
+				self.esc()
+			elif key == "enter" or key == "spacebar":
+				self.dobutton()
+			else:
+				if key.isalpha() and len(key) == 1:
+					for index, b in enumerate(self.buttons):
+						if b.name.lower().startswith(key):
+							self.select(index)
+							break
+
+		return True
+
 	def getkeyboard(self):
 		self._keyboard = Window.request_keyboard(self._keyboard_closed, self)
-		self._keyboard.bind(on_key_down=self._on_keyboard_down)
+#		self._keyboard.bind(on_key_down=self._on_keyboard_down)
+#		self._keyboard.bind(on_key_up=self._on_keyboard_up)
+
+	y = None
+	def to_window(self, *args):
+		return [1, 2, 3]
 
 saveclassinst = saveclass()
 save = saveclassinst.savestatevar
