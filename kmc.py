@@ -1437,7 +1437,10 @@ class episode(filesyspath):
 #					new_env[key] = value
 				command = before + command + after
 			print "Running:", command
-			subprocess.Popen(command)#,# env=new_env)
+			p = subprocess.Popen(command)#,# env=new_env)
+			app.noesc = True
+			p.communicate()
+			app.ignoreesc()
 		else:
 			subprocess.Popen(["smplayer", "-fullscreen", "-close-at-end", path])
 
@@ -1540,6 +1543,8 @@ class KMCApp(App):
 		Window.bind(on_motion=self.on_motion)
 		self.scrolltimer = 0
 		self._keyboard = Window.request_keyboard(self._keyboard_closed, self)
+		self.noesc = False
+		self.escwhilenoesc = False
 		self._keyboard.bind(on_key_down=self._on_keyboard_down)
 		self._keyboard.bind(on_key_up=self._on_keyboard_up)
 
@@ -1664,6 +1669,11 @@ class KMCApp(App):
 		Clock.schedule_once(self.onstart)
 
 		return self.sm
+
+	def ignoreesc(self):
+		Clock.schedule_once(self.noignoreesc)
+	def noignoreesc(self, *args):
+		self.noesc = False
 
 	def onstart(self, *args):
 		for plugin in plugins:
@@ -1877,7 +1887,7 @@ class KMCApp(App):
 				b.hover()
 
 	def _keyboard_closed(self):
-		self._keyboard.unbind(on_key_down=self._on_keyboard_down)
+#		self._keyboard.unbind(on_key_down=self._on_keyboard_down)
 		self._keyboard = None
 
 	def select_down(self):
@@ -2207,6 +2217,9 @@ class KMCApp(App):
 				self.select_up()
 			elif key == 'down':
 				self.select_down()
+			elif key == "escape":
+				if self.noesc:
+					self.escwhilenoesc = True
 
 		return True
 
@@ -2214,7 +2227,12 @@ class KMCApp(App):
 		if not popuphasfocus:
 			key = keycode[1]
 			if key == "escape":
-				self.esc()
+				if self.noesc:
+					pass
+				elif self.escwhilenoesc:
+					self.escwhilenoesc = False
+				else:
+					self.esc()
 			elif key == "enter" or key == "spacebar":
 				self.dobutton()
 			else:
