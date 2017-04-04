@@ -1439,10 +1439,14 @@ class episode(filesyspath):
 			print "Running:", command
 			p = subprocess.Popen(command)#,# env=new_env)
 			app.noesc = True
-			p.communicate()
-			app.ignoreesc()
+			t = threading.Thread(target=self.waitforproctoend, args=(p,))
+			t.start()
 		else:
 			subprocess.Popen(["smplayer", "-fullscreen", "-close-at-end", path])
+	
+	def waitforproctoend(self, p):
+			p.communicate()
+			app.ignoreesc()	
 
 
 class folder(filesyspath):
@@ -1670,7 +1674,7 @@ class KMCApp(App):
 
 		return self.sm
 
-	def ignoreesc(self):
+	def ignoreesc(self, *args):
 		Clock.schedule_once(self.noignoreesc)
 	def noignoreesc(self, *args):
 		self.noesc = False
