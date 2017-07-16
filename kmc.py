@@ -22,6 +22,9 @@ from kivy.config import Config
 Config.set('kivy', 'log_level', 'warning')
 
 from kivy.app import App
+
+Config.set('graphics', 'window_state', 'maximized')
+
 from kivy.uix.scrollview import ScrollView
 from kivy.uix.gridlayout import GridLayout
 from kivy.uix.label import Label
@@ -110,6 +113,10 @@ def timeme(method):
 
 #root = Tkinter.Tk()
 #root.withdraw()
+
+useoutlines = (kivy.__version__ == '1.9.2.dev0')
+outlinecol = [1,1,1]
+outlinewidth = 2
 
 buttoncolor=(0,0,0,0)
 selectedcolor=(1,0,0.4,0.3)
@@ -425,7 +432,7 @@ def namedir(l, override=False):
 			toremove.append(fnum.strindex)
 
 	for f in files:
-		filenums[f] = [fnum for fnum in filenums[f] if not fnum.strindex in toremove]
+		filenums[f] = [fnum for fnum in filenums[f] if not fnum.strindex in toremove and not "NCOP" in f.getpathname() and not "NCED" in f.getpathname()]
 
 	filenumsstrindex = [fnum.strindex for f in files for fnum in filenums[f]]
 	epnumpos = None
@@ -485,7 +492,7 @@ checkmark = u"\u2713"
 
 dogooglesearch = False
 whitespaces = ["_"]
-removestuff = ["DVD", "Ep", "Episodes", "+ OVA", "OVA", ".!qB", ".part", "Batch"]
+removestuff = ["DVD", "Ep", "Episodes", "+ OVA", "OVA", ".!qB", ".part", "Batch", "720p", "1080p"]
 removestuffregex = ["[\[\(][^\]^\)]*[\]\)]", "v[0-9]"]
 numberregex = "[0-9]+(\s*|[.])[0-9]+" # "[0-9]+\s*[0-9]+"
 ignorefiles = ["/"]
@@ -769,7 +776,7 @@ class abutton(AnchorLayout):
 		self.layout = BoxLayout(size_hint=(1,1))
 		self.add_widget(self.layout)
 
-		self.checklabel = Label(halign="right", size_hint=[None,1], font_name=mainfont, color=textcolor)
+		self.checklabel = Label(halign="right", size_hint=[None,1], font_name=mainfont, color=textcolor, outline_color=outlinecol, outline_width=outlinewidth)
 		self.checklabel.text = ""
 		self.checklabel.font_size = '40sp'
 		self.layout.add_widget(self.checklabel)
@@ -781,7 +788,7 @@ class abutton(AnchorLayout):
 		self.labellayout2 = AnchorLayout(anchor_x="left", anchor_y="center")
 		self.labellayout.add_widget(self.labellayout2)
 
-		self.label = Label(halign="left", size_hint=[None, None], font_name=mainfont, color=textcolor)
+		self.label = Label(halign="left", size_hint=[None, None], font_name=mainfont, color=textcolor, outline_color=outlinecol, outline_width=outlinewidth)
 		self.label.bind(texture_size=self.label.setter('size'))
 		self.labellayout2.add_widget(self.label)
 
@@ -791,7 +798,7 @@ class abutton(AnchorLayout):
 		self.labellayout.scroll_x = 0
 		self.layout.add_widget(self.labellayout)
 
-		self.downloadlabel = Label(text="", halign="right", size_hint=[None, 1], color=textcolor)
+		self.downloadlabel = Label(text="", halign="right", size_hint=[None, 1], color=textcolor, outline_color=outlinecol, outline_width=outlinewidth)
 		self.downloadlabel.font_size='20sp'
 		self.layout.add_widget(self.downloadlabel)
 
@@ -891,6 +898,8 @@ class gradientButton(Button):
 		kwargs["halign"]="right"
 		if not "valign" in kwargs:
 			kwargs["valign"]="middle"
+		kwargs["outline_color"] = outlinecol
+		kwargs["outline_width"] = outlinewidth
 		Button.__init__(self, *args, **kwargs)
 
 		with self.canvas.before:
@@ -1078,7 +1087,7 @@ class pathobj(object):
 #						elif ep > thisep:
 #							if child.getwatched():
 #								thisep = ep
-				return thisep
+				return 0
 			return None
 
 	def getshow(self):
@@ -1443,10 +1452,10 @@ class episode(filesyspath):
 			t.start()
 		else:
 			subprocess.Popen(["smplayer", "-fullscreen", "-close-at-end", path])
-	
+
 	def waitforproctoend(self, p):
 			p.communicate()
-			app.ignoreesc()	
+			app.ignoreesc()
 
 
 class folder(filesyspath):
@@ -1509,7 +1518,7 @@ class KMCApp(App):
 		sidebarlayout = FloatLayout(pos_hint={'center_x':.85, 'center_y':.5}, size_hint=[.3, 1])
 		contentlayout.add_widget(sidebarlayout)
 
-		if not useblur:
+		if not useblur and not useoutlines:
 			rightback = GradientWidget(colors=(backgroundinvisible, backgroundcolor), pos_hint={'center_x':.5, 'center_y':.5}, size_hint=[1,1])
 			sidebarlayout.add_widget(rightback)
 
@@ -1520,7 +1529,7 @@ class KMCApp(App):
 
 		self.buttonspacing = 5
 
-		if not useblur:
+		if not useblur and not useoutlines:
 			leftback = GradientWidget(colors=(backgroundcolor, backgroundinvisible), pos_hint={'center_x':.5, 'center_y':.5}, size_hint=[1,1])
 			leftsidelayout.add_widget(leftback)
 
@@ -1914,7 +1923,7 @@ class KMCApp(App):
 			del save.names[loc.getkey()]
 		elif newname != None:
 			if newname.isdigit():
-				loc.setname([oldname[0], int(newname)])
+				loc.setname([newname, int(newname)])
 			else:
 				loc.setname([newname, None])
 		self.refresh()
@@ -2265,9 +2274,6 @@ save.images[notafile.getkey()] = defaultimageloc
 
 app = KMCApp()
 
-#""" # maximize
-from kivy.core.window import Window
-Window.maximize()
 """ # fullscreen
 subprocess.Popen("wmctrl -r \":ACTIVE:\" -b toggle,fullscreen", shell=True)
 #"""
