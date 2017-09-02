@@ -358,7 +358,7 @@ class numpos(object):
 		return str(self.strindex)
 
 	def __repr__(self):
-		return str(self.strindex) + ":" + str(self.num)
+		return "numpos" + str(self.strindex) + ":" + str(self.num)
 
 	def __hash__(self):
 		return int(self.numindex) + int(self.strindex)*100 + float(self.num)*10000
@@ -393,11 +393,11 @@ def namedir(l, override=False):
 
 	filenums = {}
 
-	for f in files:
+	for f in files: # {episode: [numpos,]}
 		filenums[f] = getnumbers(stripname(f.getpathname(), False))
 		print f, filenums[f]
 
-	allfilenums = [fnum for f in files for fnum in filenums[f]]
+	allfilenums = [fnum for f in files for fnum in filenums[f]] # list of all numpos
 	print allfilenums
 	filenumcounter={}
 	for fnum in allfilenums:
@@ -410,10 +410,10 @@ def namedir(l, override=False):
 
 	toremove = []
 
-	indexes = [fnum.strindex for f in files for fnum in filenums[f]]
+	indexes = [fnum.strindex for f in files for fnum in filenums[f]] # get all indexes
 	removeindexes = set(indexes)
 	indexnums = {}
-	for f in files:
+	for f in files: # remove bad indexes
 		for fnum in filenums[f]:
 			if fnum.strindex in indexnums:
 				if indexnums[fnum.strindex] != fnum.num:
@@ -427,20 +427,25 @@ def namedir(l, override=False):
 	for fnum in filenumcounter:
 		times = filenumcounter[fnum]
 		if times >= len(files)-1:
+			print "removing index", str(fnum.strindex), "because it's all files"
 			toremove.append(fnum.strindex)
-		elif float(fnum.num) > 100:
+		elif float(fnum.num) > 200:
+			print "removing index", str(fnum.strindex), "because it's over 200"
 			toremove.append(fnum.strindex)
 
+	print "toremove", toremove
 	for f in files:
 		filenums[f] = [fnum for fnum in filenums[f] if not fnum.strindex in toremove and not "NCOP" in f.getpathname() and not "NCED" in f.getpathname()]
+	print "filenums", filenums
 
-	filenumsstrindex = [fnum.strindex for f in files for fnum in filenums[f]]
+	filenumsstrindex = [fnum.strindex for f in files for fnum in filenums[f]] # get most common index
+	print "strindexes", filenumsstrindex
 	epnumpos = None
 	if len(filenumsstrindex) != 0:
 		filenumsstrindex = Counter(filenumsstrindex)
 		commonlist = filenumsstrindex.most_common()
 		epnumpos = commonlist[0][0]
-		print epnumpos
+		print "epnumpos", epnumpos, commonlist
 
 	names = copy.copy(l)
 	eps = [None for f in l]
@@ -1153,10 +1158,14 @@ class allshowsclass(pathobj):
 						foundpath = True
 						break
 				if not foundpath:
-					newshow = newstrshowfromep(path)
-					print newshow.showstr
-					self.shows.append(newshow)
-					allstrshoweps += newshow.getchildren()
+					if not path.rsplit("/", 1)[1].startswith("."):
+						newshow = newstrshowfromep(path)
+						print "new strshow", newshow.showstr
+						self.shows.append(newshow)
+						allstrshoweps += newshow.getchildren()
+		for ep in allstrshoweps:
+			if ep.getshow().showstr.startswith("."):
+				self.shows.remove(ep.getshow())
 
 		# check plugins' shows
 		for plugin in plugins:
