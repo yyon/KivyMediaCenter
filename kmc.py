@@ -429,9 +429,9 @@ def namedir(l, override=False):
 		if times >= len(files)-1:
 			print "removing index", str(fnum.strindex), "because it's all files"
 			toremove.append(fnum.strindex)
-		elif float(fnum.num) > 200:
-			print "removing index", str(fnum.strindex), "because it's over 200"
-			toremove.append(fnum.strindex)
+#		elif float(fnum.num) > 200:
+#			print "removing index", str(fnum.strindex), "because it's over 200"
+#			toremove.append(fnum.strindex)
 
 	print "toremove", toremove
 	for f in files:
@@ -498,13 +498,13 @@ checkmark = u"\u2713"
 dogooglesearch = False
 whitespaces = ["_"]
 removestuff = ["DVD", "Ep", "Episodes", "+ OVA", "OVA", ".!qB", ".part", "Batch", "720p", "1080p"]
-removestuffregex = ["[\[\(][^\]^\)]*[\]\)]", "v[0-9]"]
+removestuffregex = ["[\[\(][^\]^\)]*[\]\)]", "v[0-9]", "[0-9]+\-[0-9]+"]
 numberregex = "[0-9]+(\s*|[.])[0-9]+" # "[0-9]+\s*[0-9]+"
 ignorefiles = ["/"]
 stripchars = [" ", "-"]
 
 ignore = ["xbmc", "lost+found"]
-ignorepartial = [".srt"]
+ignorepartial = [".srt", ".ass"]
 
 subfolders = []
 
@@ -1476,11 +1476,12 @@ class folder(filesyspath):
 	def getchildren(self):
 		children = []
 		for pathname in os.listdir(self.path):
-			path = os.path.join(self.path, pathname)
-			if os.path.isdir(path):
-				children.append(folder(path, self))
-			else:
-				children.append(episode(path, self))
+			if not pathname.startswith(".") and not pathname in ignore and not any([x in pathname for x in ignorepartial]):
+				path = os.path.join(self.path, pathname)
+				if os.path.isdir(path):
+					children.append(folder(path, self))
+				else:
+					children.append(episode(path, self))
 		return children
 
 	def defaultname(self):
@@ -1589,7 +1590,7 @@ class KMCApp(App):
 
 		# buttons to the right
 		options += [["Play", self.dobutton], ["Up", self.esc], ["Refresh", self.refresh],
-			["Delete", self.delete], ["Folder Rename", self.folderrename], ["Rename", self.rename],
+			["Delete", self.delete], ["Auto-Rename", self.folderrename], ["Rename", self.rename],
 			["Change Image", self.imageselector], ["Change Tracks", self.changetracks], ["Settings", self.showsettings]]
 		for plugin in plugins:
 			options += plugin.getoptions()
@@ -1619,11 +1620,21 @@ class KMCApp(App):
 		self.imgwin = Screen(name="images")
 		self.sm.add_widget(self.imgwin)
 
-		back = Button()
-		back.background_color=[0,1,1,1]
-		self.imgwin.add_widget(back)
+#		back = Button()
+#		back.background_color=[0,1,1,1]
+#		self.imgwin.add_widget(back)
 
-		self.imgwinlist = GridLayout(cols=1, spacing=10, pos_hint={'center_x':.5, 'center_y':.6}, size_hint=[.9,.7])
+		Window.clearcolor = (.7,.7,.7,1)
+
+		self.imgsearchbox = TextInput(multiline=False, pos_hint={'center_x':.4, 'center_y':.95}, size_hint=[.5, None], height=33)
+		self.imgwin.add_widget(self.imgsearchbox)
+		self.imgsearchbox.bind(on_text_validate=self.searchimgbytext)
+
+		self.imgsearchbutton = Button(text="Search", size_hint=[.1, .03], pos_hint={'center_x':.7, 'center_y':.95})
+		self.imgwin.add_widget(self.imgsearchbutton)
+		self.imgsearchbutton.bind(on_press=self.searchimgbytext)
+
+		self.imgwinlist = GridLayout(cols=1, spacing=10, pos_hint={'center_x':.5, 'center_y':.55}, size_hint=[.9,.7])
 		self.imgwin.add_widget(self.imgwinlist)
 
 		self.nextimgpageb = Button(text="Next Page", size_hint=[.15, .05], pos_hint={'center_x':.8, 'center_y':.1})
@@ -1690,7 +1701,13 @@ class KMCApp(App):
 
 		Clock.schedule_once(self.onstart)
 
+		Window.bind(on_close=self.onclose)
+
 		return self.sm
+
+	def onclose(self, *args):
+		saveclassinst.dosave()
+		EventLoop.close()
 
 	def ignoreesc(self, *args):
 		Clock.schedule_once(self.noignoreesc)
@@ -2063,12 +2080,17 @@ class KMCApp(App):
 				if os.path.basename(b.path) == f:
 					b.setprogress(progress)
 
+	def searchimgbytext(self, *args):
+		self.pickimage(self.imageloc, self.imgsearchbox.text)
+
 	def pickimage(self, loc, searchterm, page=0):
 		self.imagepage = page
 		self.imagesearchterm = searchterm
 		self.imageloc = loc
 
 		self.imgpage.text = "Page: " + str(self.imagepage+1)
+
+		self.imgsearchbox.text = searchterm
 
 		self.sm.current = "images"
 
@@ -2079,9 +2101,10 @@ class KMCApp(App):
 		for gimage in gimages:
 			url = gimage.previewurl
 
-			button = AnchorLayout()
+			anchorlayout = AnchorLayout()
+
 			layout = FloatLayout()
-			button.add_widget(layout)
+			anchorlayout.add_widget(layout)
 
 			b = Button(pos_hint={'center_x':.5, 'center_y':.5}, size_hint=[1,1])
 			width, height = gimage.size
@@ -2106,8 +2129,8 @@ class KMCApp(App):
 			temp = downloadtempimage(url)
 			img.source=temp
 
-			button.add_widget(img)
-			self.imgwinlist.add_widget(button)
+			anchorlayout.add_widget(img)
+			self.imgwinlist.add_widget(anchorlayout)
 
 	def nextimgpage(self, *args):
 		self.pickimage(self.imageloc, self.imagesearchterm, page=self.imagepage+1)
