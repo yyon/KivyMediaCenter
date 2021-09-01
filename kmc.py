@@ -1,4 +1,4 @@
-#!/usr/bin/env python
+#!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 
 #TODO
@@ -6,17 +6,12 @@
 # don't have errors
 # settings
 
-import module_locator
 import subprocess
 import os
 
-try:
-	import kivy
-except ImportError:
-	print "Kivy not found!"
-	installscript = subprocess.Popen(["./install_debian.sh"])
-	installscript.wait()
+DIR = os.path.dirname(os.path.realpath(__file__))
 
+import kivy
 from kivy.config import Config
 
 Config.set('kivy', 'log_level', 'warning')
@@ -77,8 +72,8 @@ import copy
 #import Tkinter
 import sys
 import time
-import urllib2
-import urllib
+import urllib.request, urllib.error, urllib.parse
+import urllib.request, urllib.parse, urllib.error
 import simplejson
 import io
 import base64
@@ -86,12 +81,12 @@ import tempfile
 import imghdr
 import shutil
 import threading
-from UserDict import UserDict
+from collections import UserDict
 from functools import partial
 from collections import OrderedDict, Counter
-from urllib2 import urlopen
+from urllib.request import urlopen
 from bs4 import BeautifulSoup
-import urllib2
+import urllib.request, urllib.error, urllib.parse
 import requests
 #from tkFileDialog import askopenfilename
 
@@ -106,7 +101,7 @@ def timeme(method):
 		result = method(*args, **kw)
 		endTime = int(round(time.time() * 1000))
 
-		print(endTime - startTime,'ms')
+		print((endTime - startTime,'ms'))
 		return result
 
 	return wrapper
@@ -215,17 +210,17 @@ class dictwithdefault(UserDict):
 		self.default = default
 
 	def __getitem__(self, key):
-		if key in self.keys():
+		if key in list(self.keys()):
 			return UserDict.__getitem__(self, key)
 		else:
 			if hasattr(self.default, "__call__"):
 				value = self.default(key)
 				if value != None:
 					self[key] = value
-				if key in self.keys():
+				if key in list(self.keys()):
 					return UserDict.__getitem__(self, key)
 				else:
-					print "ERROR"
+					print("ERROR")
 					return None
 			else:
 				return self.default
@@ -260,7 +255,7 @@ class savedata(object):
 		for var in v:
 			value = v[var]
 			if not var in self.__dict__:
-				print "MAKE", var
+				print("MAKE", var)
 				setattr(self, var, value)
 			value = getattr(self, var)
 
@@ -281,18 +276,26 @@ class savedata(object):
 
 def downloadtempimage(url):
 	temp = tempfile.mktemp()
-	print url, temp
+	print(url, temp)
 	downloadimage(url, temp)
-	ending = imghdr.what(temp)
-	if ending == None:
-		urlending = url.rsplit(".", 1)[1]
-		if len(urlending) == 3:
-			ending = urlending
+	ending = None
+	if "." in url:
+		ending = url.rsplit(".", 1)[1]
+		if len(ending) > 5:
+			ending = None
+	if ending is None:
+		ending = imghdr.what(temp)
+	#if ending == None:
+	#	urlending = url.rsplit(".", 1)[1]
+	#	if len(urlending) == 3:
+	#		ending = urlending
 	if ending != None:
 		newtemp = temp + "." + ending
 		shutil.move(temp, newtemp)
 		temp = newtemp
-	return temp
+	print("ending", ending)
+	shutil.move(temp, temp + "." + ending)
+	return temp + "." + ending
 
 def renamefiles(loc):
 	namedir(os.path.dirname(loc))
@@ -312,7 +315,7 @@ class saveclass():
 		self.loadall()
 
 	def dosave(self):
-		print "SAVING"
+		print("SAVING")
 		self.save(self.savestatevar, savefile)
 
 	def makefolders(self):
@@ -329,7 +332,7 @@ class saveclass():
 			f = open(loc, "rb")
 			data = pickle.load(f)
 		else:
-			f = open(loc, "w")
+			f = open(loc, "wb")
 			pickle.dump(defaultdata, f)
 			data = defaultdata
 		f.close()
@@ -339,7 +342,7 @@ class saveclass():
 	def save(self, data, loc):
 		shutil.copyfile(loc, loc+".bak") # make backup
 
-		f = open(loc, "w")
+		f = open(loc, "wb")
 		pickle.dump(data, f)
 		f.close()
 
@@ -361,7 +364,7 @@ class numpos(object):
 		return "numpos" + str(self.strindex) + ":" + str(self.num)
 
 	def __hash__(self):
-		return int(self.numindex) + int(self.strindex)*100 + float(self.num)*10000
+		return int(self.numindex) + int(self.strindex)*100 + int(float(self.num)*10000)
 
 def getnumbers(string):
 	num = ""
@@ -375,30 +378,31 @@ def getnumbers(string):
 			if num.startswith("."):
 				num = num[1:]
 			if num != "" and num != ".":
-				print num
+				print(num)
 				nums.append(numpos(len(nums), index - len(num), num))
 				num = ""
 	return nums
 
 def namedir(l, override=False):
 	"""Looks for episode numbers"""
-	print "naming dir"
+	print("naming dir")
 
 	global torrenteps
 	torrenteps = []
 
 	files = l
 
-	print "###"
+	print("###")
 
+	# filenums: {episode: [numpos(number, index)]}
 	filenums = {}
 
 	for f in files: # {episode: [numpos,]}
 		filenums[f] = getnumbers(stripname(f.getpathname(), False))
-		print f, filenums[f]
+		print(f, filenums[f])
 
 	allfilenums = [fnum for f in files for fnum in filenums[f]] # list of all numpos
-	print allfilenums
+	print(allfilenums)
 	filenumcounter={}
 	for fnum in allfilenums:
 		if fnum in filenumcounter:
@@ -406,7 +410,8 @@ def namedir(l, override=False):
 		else:
 			filenumcounter[fnum] = 1
 
-	print filenumcounter
+	print(filenumcounter)
+
 
 	toremove = []
 
@@ -422,30 +427,52 @@ def namedir(l, override=False):
 			else:
 				indexnums[fnum.strindex] = fnum.num
 
+	indextonumbers = {}
+	for index in set(indexes):
+		numbers = []
+		for f in files:
+			for fnum in filenums[f]:
+				if fnum.strindex == index:
+					numbers.append(fnum.num)
+		indextonumbers[index] = numbers
+	print("indextonumbers", indextonumbers)
+
 	toremove += removeindexes
 
 	for fnum in filenumcounter:
 		times = filenumcounter[fnum]
 		if times >= len(files)-1:
-			print "removing index", str(fnum.strindex), "because it's all files"
+			print("removing index", str(fnum.strindex), "because it's all files")
 			toremove.append(fnum.strindex)
 #		elif float(fnum.num) > 200:
 #			print "removing index", str(fnum.strindex), "because it's over 200"
 #			toremove.append(fnum.strindex)
 
-	print "toremove", toremove
+	print("toremove", toremove)
 	for f in files:
 		filenums[f] = [fnum for fnum in filenums[f] if not fnum.strindex in toremove and not "NCOP" in f.getpathname() and not "NCED" in f.getpathname()]
-	print "filenums", filenums
+	print("filenums", filenums)
 
 	filenumsstrindex = [fnum.strindex for f in files for fnum in filenums[f]] # get most common index
-	print "strindexes", filenumsstrindex
+	print("strindexes", filenumsstrindex)
 	epnumpos = None
 	if len(filenumsstrindex) != 0:
 		filenumsstrindex = Counter(filenumsstrindex)
-		commonlist = filenumsstrindex.most_common()
-		epnumpos = commonlist[0][0]
-		print "epnumpos", epnumpos, commonlist
+		commonlist = [index for index, amount in filenumsstrindex.most_common()]
+		print("commonlist", commonlist)
+		amtuniquenumbers = {index: len(set(indextonumbers[index])) for index in commonlist }
+		print("amtuniquenumbers", amtuniquenumbers)
+		mostuniquenumbers = max(amtuniquenumbers.values())
+		if mostuniquenumbers < 3.0/4.0 * filenumsstrindex.most_common()[0][1]:
+			# just one number isn't good enough - probably contains both season and episode
+			mostcommon = sorted(commonlist, key = lambda index: amtuniquenumbers[index])
+			epnumpos = [mostcommon[0], mostcommon[1]]
+			print("attempting to describe with 2 numbers. Indexes:", epnumpos)
+		else:
+			mostcommonlist = [index for index, amtunique in list(amtuniquenumbers.items()) if amtunique == mostuniquenumbers]
+			print("mostcommonlist 2", mostcommonlist)
+			epnumpos = [mostcommonlist[0]]
+			print("epnumpos", epnumpos, mostcommonlist)
 
 	names = copy.copy(l)
 	eps = [None for f in l]
@@ -455,15 +482,26 @@ def namedir(l, override=False):
 		changedname = files[index]
 		newname = path.getpathname()
 		if epnumpos != None:
-			numpos = epnumpos
-			numbers = filenums[changedname]
-			number = [num for num in numbers if num.strindex == numpos]
-			if number != []:
-				number = number[0].num
-				if "." in number:
-					number = float(number)
-				else:
-					number = int(number)
+			if len(epnumpos) == 1:
+				numpos = epnumpos[0]
+				numbers = filenums[changedname]
+				number = [num for num in numbers if num.strindex == numpos]
+				if number != []:
+					number = number[0].num
+					if number.endswith("."):
+						number = number[:-1]
+					if "." in number:
+						number = float(number)
+					else:
+						number = int(number)
+					eps[index] = number
+			elif len(epnumpos) == 2:
+				numbers = filenums[changedname]
+				firstnumber = [num for num in numbers if num.strindex == epnumpos[0]]
+				secondnumber = [num for num in numbers if num.strindex == epnumpos[1]]
+				firstnumber = int(firstnumber[0].num)
+				secondnumber = int(secondnumber[0].num)
+				number = firstnumber + float(secondnumber) / 100
 				eps[index] = number
 		names[index] = newname
 
@@ -489,11 +527,11 @@ pluginsfolder = os.path.join(kmcfolder, "plugins")
 
 defaultimageloc = os.path.join(kmcfolder, "default.jpg")
 if not os.path.exists(defaultimageloc):
-	defaultimageloc = os.path.join(module_locator.module_path(), "default.jpg")
+	defaultimageloc = os.path.join(DIR, "default.jpg")
 
-mpvinputconf = os.path.join(module_locator.module_path(), "input.conf")
+mpvinputconf = os.path.join(DIR, "input.conf")
 
-checkmark = u"\u2713"
+checkmark = "\u2713"
 
 dogooglesearch = False
 whitespaces = ["_"]
@@ -545,7 +583,7 @@ if os.path.exists(pluginsfolder):
 	for pluginfile in os.listdir(pluginsfolder):
 		if pluginfile.endswith(".py"):
 			pluginfile = os.path.join(pluginsfolder, pluginfile)
-			execfile(pluginfile)
+			exec(compile(open(pluginfile, "rb").read(), pluginfile, 'exec'))
 
 class googleimage():
 	def __init__(self, url, previewurl, size, page):
@@ -563,14 +601,14 @@ def imagesearch(searchTerm, page):
 #	response = urllib2.urlopen(request)
 	url = "https://www.googleapis.com/customsearch/v1"
 	searchTerm = re.sub(r"[^A-z0-9\ ]", "", searchTerm)
-	print "search term", searchTerm
+	print("search term", searchTerm)
 	params = {"q":searchTerm, "start":(page)*10+1, "searchType":"image", "key":"AIzaSyDYX1opGR7gu_94QjIp6RFUWkEt_6vrO7Y", "cx":"000234580847714625450:6vmskbjnihy"} #"imgSize":"huge",
 	try:
 		request = requests.get(url, params=params)
 	except requests.exceptions.ConnectionError:
 		return
-	print "REQUEST", request
-	print request.url
+	print("REQUEST", request)
+	print(request.url)
 
 	# Get results using JSON
 #	results = simplejson.load(response)
@@ -581,7 +619,7 @@ def imagesearch(searchTerm, page):
 		return
 	data = results['items']
 
-	print "DATA", data
+	print("DATA", data)
 
 	# Iterate for each result and get unescaped url
 	for myUrl in data:
@@ -597,7 +635,7 @@ def imagesearch(searchTerm, page):
 
 	# Sleep for one second to prevent IP blocking from Google
 
-	print len(images)
+	print(len(images))
 
 	return images
 
@@ -606,12 +644,12 @@ def findimage(searchterm, page=0):
 	return images
 
 def downloadimage(url, path):
-	print "downloading", url
+	print("downloading", url)
 #	urllib.urlretrieve(url, path)
 	f = open(path,'wb')
 	f.write(requests.get(url).content)
 	f.close()
-	print "done downloading"
+	print("done downloading")
 
 def stringbetween(string, s, e):
 	start, middleend = string.split(s, 1)
@@ -622,7 +660,7 @@ def searchgoogle(string):
 	g = pygoogle(string)
 	g.pages = 1
 	try:
-		newname = g.search().keys()[0]
+		newname = list(g.search().keys())[0]
 		if " - " in newname:
 			newname = newname.split(" - ")[0]
 		if " (" in newname:
@@ -691,19 +729,17 @@ class Gradient(object):
 	@staticmethod
 	def horizontal(rgba_left, rgba_right):
 		texture = Texture.create(size=(2, 1), colorfmt="rgba")
-		pixels =rgba_left + rgba_right
-		pixels = [chr(int(v * 255)) for v in pixels]
-		buf = ''.join(pixels)
-		texture.blit_buffer(buf, colorfmt='rgba', bufferfmt='ubyte')
+		pixels = rgba_left + rgba_right
+		pixels = bytes(bytearray([(int(v * 255)) for v in pixels]))
+		texture.blit_buffer(pixels, colorfmt='rgba', bufferfmt='ubyte')
 		return texture
 
 	@staticmethod
 	def vertical(rgba_top, rgba_bottom):
 		texture = Texture.create(size=(1, 2), colorfmt="rgba")
 		pixels = rgba_bottom + rgba_top
-		pixels = [chr(int(v * 255)) for v in pixels]
-		buf = ''.join(pixels)
-		texture.blit_buffer(buf, colorfmt='rgba', bufferfmt='ubyte')
+		pixels = bytes(bytearray([(int(v * 255)) for v in pixels]))
+		texture.blit_buffer(pixels, colorfmt='rgba', bufferfmt='ubyte')
 		return texture
 
 class GradientWidget(Widget):
@@ -967,7 +1003,7 @@ class pathobj(object):
 		return False
 
 	def getname(self):
-		if not self.getkey() in save.names.keys():
+		if not self.getkey() in list(save.names.keys()):
 			save.names[self.getkey()] = self.defaultname()
 		return save.names[self.getkey()]
 
@@ -978,7 +1014,7 @@ class pathobj(object):
 		save.names[self.getkey()] = name
 
 	def getwatched(self):
-		if not self.getkey() in save.watched.keys():
+		if not self.getkey() in list(save.watched.keys()):
 			save.watched[self.getkey()] = self.defaultwatched()
 		return save.watched[self.getkey()]
 
@@ -989,7 +1025,7 @@ class pathobj(object):
 		save.watched[self.getkey()] = watched
 
 	def getcreated(self):
-		if not self.getkey() in save.created.keys():
+		if not self.getkey() in list(save.created.keys()):
 			save.created[self.getkey()] = self.defaultcreated()
 		return save.created[self.getkey()]
 
@@ -1000,7 +1036,7 @@ class pathobj(object):
 		save.created[self.getkey()] = created
 
 	def getimage(self):
-		if not self.getkey() in save.images.keys():
+		if not self.getkey() in list(save.images.keys()):
 			return self.defaultimage()
 		return save.images[self.getkey()]
 
@@ -1025,17 +1061,17 @@ class pathobj(object):
 			return defaultimageloc
 
 	def deleteimage(self):
-		if self.getkey() in save.images.keys():
+		if self.getkey() in list(save.images.keys()):
 			del save.images[self.getkey()]
 
 	def hasimage(self):
-		return self.getkey() in save.images.keys()
+		return self.getkey() in list(save.images.keys())
 
 	def setimage(self, image):
 		save.images[self.getkey()] = image
 
 	def getscrollstate(self):
-		if not self.getkey() in save.scrollstate.keys():
+		if not self.getkey() in list(save.scrollstate.keys()):
 			return self.defaultscrollstate()
 		return save.scrollstate[self.getkey()]
 
@@ -1046,7 +1082,7 @@ class pathobj(object):
 		save.scrollstate[self.getkey()] = scrollstate
 
 	def getlastwatched(self):
-		if not self.getkey() in save.lastwatched.keys():
+		if not self.getkey() in list(save.lastwatched.keys()):
 			return self.defaultlastwatched()
 		return save.lastwatched[self.getkey()]
 
@@ -1101,7 +1137,7 @@ class pathobj(object):
 		return self.getparent().getshow()
 
 	def gettracks(self):
-		if not self.getkey() in save.tracks.keys():
+		if not self.getkey() in list(save.tracks.keys()):
 			return self.defaulttracks()
 		return save.tracks[self.getkey()]
 
@@ -1136,10 +1172,10 @@ class allshowsclass(pathobj):
 			if "S##E##" in re.sub("\d", "#", pathname):
 				ep = getsingleep(path)
 				strip = SnumEnumstripname(os.path.basename(ep))
-				print "STRIP", strip
-				print allSnumEnum
+				print("STRIP", strip)
+				print(allSnumEnum)
 				if not strip in allSnumEnum:
-					print "ADDING SHOW"
+					print("ADDING SHOW")
 					newshow = SnumEnumshow(strip)
 					self.shows.append(newshow)
 			elif os.path.isdir(path):
@@ -1160,7 +1196,7 @@ class allshowsclass(pathobj):
 				if not foundpath:
 					if not path.rsplit("/", 1)[1].startswith("."):
 						newshow = newstrshowfromep(path)
-						print "new strshow", newshow.showstr
+						print("new strshow", newshow.showstr)
 						self.shows.append(newshow)
 						allstrshoweps += newshow.getchildren()
 		for ep in allstrshoweps:
@@ -1196,7 +1232,7 @@ class show(pathobj):
 
 	def delete(self):
 		with open(deletedfile, "a") as myfile:
-			print self.getname()[0].encode("utf-8") + "\n"
+			print(self.getname()[0].encode("utf-8") + "\n")
 			myfile.write(self.getname()[0].encode("utf-8") + "\n")
 
 		for child in self.getchildren():
@@ -1233,7 +1269,11 @@ class foldershow(show):
 		return os.path.basename(self.path)
 
 	def defaultname(self):
-		return [changename(self.getpathname(), takeoutnumbers=True, dosearch=dogooglesearch, title=True), None]
+		changedname = changename(self.getpathname(), takeoutnumbers=True, dosearch=dogooglesearch, title=True)
+		if (changedname != None):
+			return [changedname, None]
+		else:
+			return [self.getpathname(), None]
 
 	def defaultcreated(self):
 		return getcreatedtime(self.path)
@@ -1271,7 +1311,11 @@ class strshow(show):
 		return children
 
 	def defaultname(self):
-		return [changename(self.getpathname(), takeoutnumbers=True, dosearch=dogooglesearch, title=True), None]
+		changedname = changename(self.getpathname(), takeoutnumbers=True, dosearch=dogooglesearch, title=True)
+		if (changedname != None):
+			return [changedname, None]
+		else:
+			return [self.getpathname(), None]
 
 	def exists(self):
 		if self.getchildren() == []:
@@ -1369,7 +1413,11 @@ class SnumEnumshow(show):
 
 
 	def defaultname(self):
-		return [changename(self.getpathname(), takeoutnumbers=True, dosearch=dogooglesearch, title=True), None]
+		changedname = changename(self.getpathname(), takeoutnumbers=True, dosearch=dogooglesearch, title=True)
+		if (changedname != None):
+			return [changedname, None]
+		else:
+			return [self.getpathname(), None]
 
 	def exists(self):
 		if self.getchildren() == []:
@@ -1410,7 +1458,7 @@ class filesyspath(pathobj):
 
 	def defaultname(self):
 		namedir(self.up.getchildren())
-		if not self.getkey() in save.names.keys():
+		if not self.getkey() in list(save.names.keys()):
 			save.names[self.getkey()] = self.getpathname()
 		return save.names[self.getkey()]
 
@@ -1422,7 +1470,7 @@ class episode(filesyspath):
 		return os.path.getsize(self.path)
 
 	def delete(self):
-		print "DELETING:", self.path
+		print("DELETING:", self.path)
 		os.remove(self.path)
 
 	def pressed(self):
@@ -1454,7 +1502,7 @@ class episode(filesyspath):
 #				for key, value in env:
 #					new_env[key] = value
 				command = before + command + after
-			print "Running:", command
+			print("Running:", command)
 			p = subprocess.Popen(command)#,# env=new_env)
 			app.noesc = True
 			t = threading.Thread(target=self.waitforproctoend, args=(p,))
@@ -1485,7 +1533,11 @@ class folder(filesyspath):
 		return children
 
 	def defaultname(self):
-		return [changename(self.getpathname(), takeoutnumbers=False, dosearch=False, title=True), None]
+		changedname = changename(self.getpathname(), takeoutnumbers=True, dosearch=dogooglesearch, title=True)
+		if (changedname != None):
+			return [changedname, None]
+		else:
+			return [self.getpathname(), None]
 
 	def delete(self):
 		for child in self.getchildren():
@@ -1586,7 +1638,7 @@ class KMCApp(App):
 
 		options = []
 		if showupdown:
-			options += [[u"\u25b3", self.select_up, updown], [u"\u25bd", self.select_down, updown]]
+			options += [["\u25b3", self.select_up, updown], ["\u25bd", self.select_down, updown]]
 
 		# buttons to the right
 		options += [["Play", self.dobutton], ["Up", self.esc], ["Refresh", self.refresh],
@@ -1710,7 +1762,7 @@ class KMCApp(App):
 		EventLoop.close()
 
 	def ignoreesc(self, *args):
-		Clock.schedule_once(self.noignoreesc)
+		Clock.schedule_once(self.noignoreesc, 1)
 	def noignoreesc(self, *args):
 		self.noesc = False
 
@@ -1744,7 +1796,7 @@ class KMCApp(App):
 		self.titlelabel.text = name
 
 		self.refresh()
-		print "In folder", self.infolder.getname()
+		print("In folder", self.infolder.getname())
 		self.refreshimage()
 		self.refreshdownloadedfrominfo()
 
@@ -1782,15 +1834,15 @@ class KMCApp(App):
 
 		for index, ep in enumerate(l):
 			name, epnumber = ep.getname()
-#			newname = ''.join([i if ord(i) < 128 else '?' for i in name])
+			name = ''.join([i if ord(i) < 128 else '?' for i in name])
 #			if newname != name:
 #				print newname
 #				ep.setname([newname, None])
 #				name = newname
 			allfiles[index] = [ep, name, epnumber]
 
-		allfiles.sort(key=lambda f : f[1])
-		allfiles.sort(key=lambda f : f[2])
+		allfiles.sort(key=lambda f : f[1] or 0)
+		allfiles.sort(key=lambda f : f[2] or 0)
 
 		if self.infolder == save.allshows:
 			if save.sort == SORT_WATCHED:
@@ -1844,9 +1896,9 @@ class KMCApp(App):
 		self.imagesloaders[imgpath] = proxyimage
 
 	def loadimages(self):
-		dirs = [d for d in save.images.keys()]
+		dirs = [d for d in list(save.images.keys())]
 		for d in dirs:
-			print save.images[d]
+			print(save.images[d])
 			imgpath = save.images[d]
 			self.loadimage(imgpath)
 
@@ -1860,6 +1912,9 @@ class KMCApp(App):
 			return
 
 		imgpath = path.getimage()
+
+		if imgpath == None:
+			return
 
 		self.imageloader = Loader.image(imgpath)
 		self.imageloader.bind(on_load=self.imageloaded)
@@ -1971,7 +2026,7 @@ class KMCApp(App):
 #		if tkMessageBox.askyesno("Rename", "Rename this directory?"):
 
 	def finishfolderrename(self):
-		print "rename"
+		print("rename")
 		namedir(self.infolder.getchildren(), True)
 		self.refresh()
 
@@ -1998,7 +2053,7 @@ class KMCApp(App):
 		path = self.imageloc
 
 		if filename != None:
-			print filename
+			print(filename)
 			self.setimage(path, filename)
 			self.sm.current="default"
 
@@ -2109,13 +2164,13 @@ class KMCApp(App):
 			b = Button(pos_hint={'center_x':.5, 'center_y':.5}, size_hint=[1,1])
 			width, height = gimage.size
 
-			print width, height
+			print(width, height)
 			if width < 1920 or height < 1080:
-				print "too small"
+				print("too small")
 				b.background_color=[0,0,0,1]
 
 			ending = gimage.url.rsplit(".", 1)[1]
-			print gimage.url
+			print(gimage.url)
 			if len(ending) > 3:
 				b.background_color = [1, 0, 0, 1]
 
@@ -2173,7 +2228,9 @@ class KMCApp(App):
 		if gimage != None:
 			url = gimage.url
 			temp = downloadtempimage(url)
-			result = self.setimage(loc, temp)
+			savedpath = os.path.join(imagesfolder, os.path.basename(temp))
+			shutil.copyfile(temp, savedpath)
+			result = self.setimage(loc, savedpath)
 		self.sm.current="default"
 		return result
 
@@ -2182,30 +2239,32 @@ class KMCApp(App):
 			path = tvpath.getimage()
 			basename = os.path.basename(path)
 			number = basename.rsplit(".", 2)
-			if len(number) == 3:
-				number = int(number[1])
-				number += 1
-			else:
-				number = 1
+#			if len(number) == 3:
+#				number = int(number[1])
+#				number += 1
+#			else:
+#				number = 1
 			if os.path.exists(path):
 				os.remove(path)
-		else:
-			number = 1
+#		else:
+#			number = 1
 
 		ending = "png"
-		middle = "." + str(number)
+#		middle = "." + str(number)
 		pathname = tvpath.getpathname()
 		try:
 			pathname = re.sub(r'[^\x00-\x7F]+',' ', pathname)
 		except Exception as e:
 			pass
-		newimagename = pathname + middle + "." + ending
+#		newimagename = pathname + middle + "." + ending
 		downloadfolder = imagesfolder
-		newimagepath = os.path.join(downloadfolder, newimagename)
+		newimagepath = imgpath#os.path.join(downloadfolder, newimagename)
 
 		try:
-			img = Image(source=imgpath)
-			img.texture.save(newimagepath)
+			# img = Image(source=imgpath)
+			# img.texture.save(newimagepath)
+			#tmpfile = downloadtempfile(imgpath)
+			#shutil.move(tmpfile, newimagepath)
 			tvpath.setimage(newimagepath)
 			self.loadimage(newimagepath)
 
@@ -2215,9 +2274,9 @@ class KMCApp(App):
 		except Exception as e:
 			exc_type, exc_obj, exc_tb = sys.exc_info()
 			fname = os.path.split(exc_tb.tb_frame.f_code.co_filename)[1]
-			print(exc_type, fname, exc_tb.tb_lineno)
-			print e
-			print "Could not open file"
+			print((exc_type, fname, exc_tb.tb_lineno))
+			print(e)
+			print("Could not open file")
 
 			return False
 
@@ -2246,7 +2305,7 @@ class KMCApp(App):
 		self.sm.current = "settings"
 
 	def finishaskstring(self, text):
-		print text
+		print(text)
 
 	def finishsettings(self, dosave, widget):
 		if dosave:
