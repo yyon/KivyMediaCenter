@@ -55,13 +55,8 @@ from kivy.properties import ListProperty
 from kivy.graphics import *
 from kivy.graphics.texture import Texture
 
-"""
-try:
-	from kivy.uix.effectwidget import EffectWidget
-except ImportError:
-	EffectWidget = None
+from kivy.uix.effectwidget import EffectWidget
 from kivy.uix.effectwidget import InvertEffect, HorizontalBlurEffect, VerticalBlurEffect
-"""
 
 import pickle
 import re
@@ -106,6 +101,9 @@ def timeme(method):
 
 	return wrapper
 
+def font_size(base_size):
+	return str(int(base_size)) + "sp"
+
 #root = Tkinter.Tk()
 #root.withdraw()
 
@@ -143,7 +141,7 @@ def popupmessage(title, message, content=None, options=[["Dismiss", None]], arg=
 	vbox.add_widget(scroll)
 	vbox2 = BoxLayout(orientation="vertical")
 	scroll.add_widget(vbox2)
-	l = Label(text=message, size_hint=[1,None])
+	l = AFLabel(text=message, size_hint=[1,None])
 	vbox2.add_widget(l)
 	if content != None:
 		vbox2.add_widget(content)
@@ -377,7 +375,7 @@ def getnumbers(string):
 				num = num[:-1]
 			if num.startswith("."):
 				num = num[1:]
-			if num != "" and num != ".":
+			if num != "" and num != "." and num != "..":
 				print(num)
 				nums.append(numpos(len(nums), index - len(num), num))
 				num = ""
@@ -765,12 +763,12 @@ class AFLabel(Label):
 	#   resize the fontsize to make it fit best in allowed space
 
 	def __init__(self, **kwargs):
-		self.bind(height = self._resize)
-		super(AFLabel, self).__init__(**kwargs)
+		super(AFLabel, self).__init__(**kwargs, font_size="50dp")
+		# self.bind(height = self._resize)
 
-	def _resize(self,instance, height):
-		# start with simple case of calculating scalefactor from height
-		self.font_size = '%dsp' % sp(height)
+	# def _resize(self,instance, height):
+	# 	# start with simple case of calculating scalefactor from height
+	# 	self.font_size = 'font_size(d) % sp(height / 50)
 
 buttonactivatedtexture = Gradient.horizontal(selectedcolor, selectedcolor[:3] + (0,))
 buttoninvisibletexture = Gradient.horizontal((0,0,0,0), (0, 0, 0, 0))
@@ -804,7 +802,7 @@ class abutton(AnchorLayout):
 				name = ep.getpathname()
 		self.name = name
 
-		self.font_size='40sp'
+		self.font_size=font_size(80)
 		self.progress = None
 		self.selected = False
 
@@ -817,9 +815,9 @@ class abutton(AnchorLayout):
 		self.layout = BoxLayout(size_hint=(1,1))
 		self.add_widget(self.layout)
 
-		self.checklabel = Label(halign="right", size_hint=[None,1], font_name=mainfont, color=textcolor, outline_color=outlinecol, outline_width=outlinewidth)
+		self.checklabel = AFLabel(halign="right", size_hint=[None,1], font_name=mainfont, color=textcolor, outline_color=outlinecol, outline_width=outlinewidth)
 		self.checklabel.text = ""
-		self.checklabel.font_size = '40sp'
+		self.checklabel.font_size = font_size(80)
 		self.layout.add_widget(self.checklabel)
 
 		self.labellayout = ScrollView()
@@ -829,18 +827,18 @@ class abutton(AnchorLayout):
 		self.labellayout2 = AnchorLayout(anchor_x="left", anchor_y="center")
 		self.labellayout.add_widget(self.labellayout2)
 
-		self.label = Label(halign="left", size_hint=[None, None], font_name=mainfont, color=textcolor, outline_color=outlinecol, outline_width=outlinewidth)
+		self.label = AFLabel(halign="left", size_hint=[None, None], font_name=mainfont, color=textcolor, outline_color=outlinecol, outline_width=outlinewidth)
 		self.label.bind(texture_size=self.label.setter('size'))
 		self.labellayout2.add_widget(self.label)
 
-		self.label.font_size = '30sp'
+		self.label.font_size = font_size(60)
 
 
 		self.labellayout.scroll_x = 0
 		self.layout.add_widget(self.labellayout)
 
-		self.downloadlabel = Label(text="", halign="right", size_hint=[None, 1], color=textcolor, outline_color=outlinecol, outline_width=outlinewidth)
-		self.downloadlabel.font_size='20sp'
+		self.downloadlabel = AFLabel(text="", halign="right", size_hint=[None, 1], color=textcolor, outline_color=outlinecol, outline_width=outlinewidth)
+		self.downloadlabel.font_size=font_size(40)
 		self.layout.add_widget(self.downloadlabel)
 
 		self.actualbutton = Button(background_color=[0,0,0,0], text="", pos_hint=[0.5,0.5], size_hint=[1,1])
@@ -965,7 +963,7 @@ class gradientButton(Button):
 		if self.text_size[0] < 300:
 			if self.original_font_size == None:
 				self.original_font_size = self.font_size
-			self.font_size = '20sp'
+			self.font_size = font_size(40)
 		else:
 			if self.original_font_size != None:
 				self.font_size = self.original_font_size
@@ -974,7 +972,7 @@ class gradientButton(Button):
 class clock(AnchorLayout):
 	def __init__(self, size_hint=None, pos_hint=None):
 		AnchorLayout.__init__(self, size_hint=size_hint, pos_hint=pos_hint)
-		self.button = gradientButton(text="hi", halign="center", size_hint=[1,1], font_name=mainfont, color=textcolor, font_size='70sp')
+		self.button = gradientButton(text="hi", halign="center", size_hint=[1,1], font_name=mainfont, color=textcolor, font_size=font_size(140))
 #		self.button.background_color = buttoncolor#[.5, .5, .5, buttonopacity]
 		self.add_widget(self.button)
 
@@ -1569,7 +1567,13 @@ class KMCApp(App):
 		self.imageloader = None
 
 		self.backgroundimage = Image(pos_hint={'center_x':.5, 'center_y':.5}, size_hint=[1,3], allow_stretch=True)
-		fllayout.add_widget(self.backgroundimage)
+		if useblur:
+			w = EffectWidget()
+			w.effects = [HorizontalBlurEffect(size=5.0), VerticalBlurEffect(size=5.0)]
+			w.add_widget(self.backgroundimage)
+			fllayout.add_widget(w)
+		else:
+			fllayout.add_widget(self.backgroundimage)
 
 		contentlayout = FloatLayout(pos_hint={'center_x':.5, 'center_y':.5}, size_hint=[1,1])
 		fllayout.add_widget(contentlayout)
@@ -1601,7 +1605,7 @@ class KMCApp(App):
 		self.layoutheight = 15
 		self.layouttop = 0
 
-		self.titlelabel = gradientButton(text="hi", pos_hint={'center_x':.5, 'center_y':1-.05}, valign="top", size_hint=(1, .1), font_name=mainfont, color=textcolor, font_size="40sp")
+		self.titlelabel = gradientButton(text="hi", pos_hint={'center_x':.5, 'center_y':1-.05}, valign="top", size_hint=(1, .1), font_name=mainfont, color=textcolor, font_size=font_size(80))
 		sidebarlayout.add_widget(self.titlelabel)
 
 		self.buttons = []
@@ -1657,7 +1661,7 @@ class KMCApp(App):
 			text, command = opt[0], opt[1]
 			button = gradientButton()
 			parent.add_widget(button)
-			button.font_size='30sp'
+			button.font_size=font_size(60)
 			button.font_name = mainfont
 			button.text = text
 			button.color = textcolor
@@ -1693,7 +1697,7 @@ class KMCApp(App):
 		self.nextimgpageb.bind(on_press=self.nextimgpage)
 		self.imgwin.add_widget(self.nextimgpageb)
 
-		self.imgpage = Label(size_hint=[.15, .05], pos_hint={'center_x':.6, 'center_y':.1})
+		self.imgpage = AFLabel(size_hint=[.15, .05], pos_hint={'center_x':.6, 'center_y':.1})
 		self.imgwin.add_widget(self.imgpage)
 
 		self.nextimgpageb = Button(text="Cancel", size_hint=[.15, .05], pos_hint={'center_x':.4, 'center_y':.1})
@@ -1731,7 +1735,7 @@ class KMCApp(App):
 			self.settings += plugin.getsettings()
 
 		for labeltext, widget, savevar, getter, setter in self.settings:
-			label = Label(text=labeltext)
+			label = AFLabel(text=labeltext)
 			self.settingsgrid.add_widget(label)
 			self.settingsgrid.add_widget(widget)
 			if savevar != None:
@@ -2179,7 +2183,7 @@ class KMCApp(App):
 			layout.add_widget(b)
 			img = Image(allow_stretch=True)
 
-			layout.add_widget(Label(text=str(width) + "x" + str(height), pos_hint={'center_x':.9, 'center_y':.5}))
+			layout.add_widget(AFLabel(text=str(width) + "x" + str(height), pos_hint={'center_x':.9, 'center_y':.5}))
 
 			temp = downloadtempimage(url)
 			img.source=temp
@@ -2202,11 +2206,11 @@ class KMCApp(App):
 			st = ""
 		at, st = str(at), str(st)
 		f = BoxLayout(orientation="vertical")
-		al = Label(text="Audio:")
+		al = AFLabel(text="Audio:")
 		f.add_widget(al)
 		atext = TextInput(text=at)
 		f.add_widget(atext)
-		sl = Label(text="Subtitles:")
+		sl = AFLabel(text="Subtitles:")
 		f.add_widget(sl)
 		stext = TextInput(text=st)
 		f.add_widget(stext)
